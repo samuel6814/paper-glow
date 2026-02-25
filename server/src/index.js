@@ -24,5 +24,5 @@ app.use('/api/polaroids', polaroidRoutes);  // Polaroid CRUD operations
 // Server Init
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-    console.log(`📸 PaperGlow Server is running on port ${PORT}`);
+    console.log(`PaperGlow Server is running on port ${PORT}`);
 });
