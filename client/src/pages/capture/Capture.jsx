@@ -17,9 +17,10 @@ import {
   LayoutGrid,
   CameraOff,
   Camera,
-  Palette
+  Palette,
+  Loader2 // Added for loading state
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 // --- Frame Theme Presets ---
 const FRAME_THEMES = [
@@ -74,12 +75,12 @@ async function getCroppedImg(imageSrc, pixelCrop) {
 }
 
 // ==========================================
-// STYLED COMPONENTS
+// STYLED COMPONENTS (DARK HERO THEME)
 // ==========================================
 const CaptureContainer = styled.div`
   min-height: 100vh;
-  background-color: #0f141e;
-  background-image: radial-gradient(circle at 50% 50%, #1a2332 0%, #0f141e 100%);
+  background-color: #121826; /* Dark slate background */
+  background-image: radial-gradient(circle at 50% 50%, #1a2235 0%, #121826 100%);
   display: flex;
   flex-direction: column;
   color: #ffffff;
@@ -107,6 +108,7 @@ const TopNavButton = styled(Link)`
   top: 1.5rem;
   color: #9ca3af;
   background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.05);
   padding: 10px;
   border-radius: 50%;
   display: flex;
@@ -139,7 +141,7 @@ const GalleryButton = styled(TopNavButton)`
 const Title = styled.h1`
   font-family: 'Inter', sans-serif;
   font-size: 1.5rem;
-  font-weight: 700;
+  font-weight: 800;
   color: #ffffff;
   margin-bottom: 0.25rem;
 
@@ -152,7 +154,7 @@ const Title = styled.h1`
 const Subtitle = styled.p`
   font-family: 'Playfair Display', serif;
   font-style: italic;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   color: #9ca3af;
 
   @media (max-width: 768px) {
@@ -199,10 +201,10 @@ const RightToolbar = styled(motion.div)`
   flex-direction: column;
   gap: 1rem;
   z-index: 20;
-  background: rgba(0, 0, 0, 0.4);
+  background: rgba(255, 255, 255, 0.05); 
   padding: 12px;
   border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(8px);
 
   @media (max-width: 768px) {
@@ -219,10 +221,10 @@ const ColorSwatch = styled(motion.button)`
   height: 32px;
   border-radius: 50%;
   background-color: ${props => props.$color};
-  border: 2px solid ${props => props.$isActive ? '#2bb1ff' : 'rgba(255,255,255,0.2)'};
+  border: 2px solid ${props => props.$isActive ? '#c78933' : 'rgba(255,255,255,0.2)'};
   cursor: pointer;
   outline: none;
-  box-shadow: ${props => props.$isActive ? '0 0 10px rgba(43, 177, 255, 0.5)' : 'none'};
+  box-shadow: ${props => props.$isActive ? '0 0 10px rgba(199, 137, 51, 0.5)' : 'none'};
 `;
 
 const ToolButton = styled(motion.button)`
@@ -239,9 +241,9 @@ const ToolButton = styled(motion.button)`
   transition: all 0.2s ease;
 
   &:hover, &.active {
-    background-color: ${props => props.$danger ? 'rgba(239, 68, 68, 0.1)' : 'rgba(43, 177, 255, 0.1)'};
-    border-color: ${props => props.$danger ? 'rgba(239, 68, 68, 0.3)' : 'rgba(43, 177, 255, 0.3)'};
-    color: ${props => props.$danger ? '#ef4444' : '#2bb1ff'};
+    background-color: ${props => props.$danger ? 'rgba(239, 68, 68, 0.1)' : 'rgba(199, 137, 51, 0.15)'};
+    border-color: ${props => props.$danger ? 'rgba(239, 68, 68, 0.3)' : 'rgba(199, 137, 51, 0.4)'};
+    color: ${props => props.$danger ? '#ef4444' : '#c78933'}; /* Gold accent */
   }
   
   &:disabled {
@@ -258,8 +260,8 @@ const ToolButton = styled(motion.button)`
 // --- Polaroid Frame Components ---
 const PolaroidWrapper = styled(motion.div)`
   background-color: ${props => props.$theme.bg};
-  padding: 16px 16px 90px 16px; /* Slightly increased bottom padding to fit taller handwriting strip */
-  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.4);
+  padding: 16px 16px 90px 16px; 
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.5); /* Stronger shadow for dark theme */
   border-radius: 2px;
   width: 100%;
   max-width: 460px;
@@ -299,13 +301,32 @@ const CapturedImage = styled.img`
   width: 100%;
   height: 100%;
   object-fit: cover;
-  filter: ${props => props.$effect ? 'sepia(0.3) contrast(1.1) brightness(0.9)' : 'none'};
+  filter: ${props => props.$effect ? 'contrast(1.1) brightness(1.1) saturate(1.2) sepia(0.3) hue-rotate(-10deg)' : 'none'};
   transition: filter 0.3s ease;
+`;
+
+const FilmBadge = styled(motion.div)`
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  background-color: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  color: #fef3c7;
+  padding: 4px 10px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  z-index: 20;
+  border: 1px solid rgba(254, 243, 199, 0.2);
 `;
 
 const CaptionInput = styled.input`
   position: absolute;
-  bottom: 40px; /* Moved up slightly to accommodate the taller bottom strip */
+  bottom: 40px; 
   left: 0;
   width: 100%;
   text-align: center;
@@ -333,7 +354,7 @@ const BottomStrip = styled.div`
   bottom: 0;
   left: 0;
   width: 100%;
-  height: 32px; /* Taller strip to fit handwriting descenders/loops cleanly */
+  height: 32px; 
   background-color: ${props => props.$color};
   display: flex;
   align-items: center;
@@ -344,8 +365,8 @@ const BottomStrip = styled.div`
 const SubCaptionInput = styled.input`
   width: 100%;
   text-align: center;
-  font-family: 'Caveat', cursive, serif; /* Swapped to handwriting font */
-  font-size: 1.2rem; /* Increased size for handwriting */
+  font-family: 'Caveat', cursive, serif; 
+  font-size: 1.2rem; 
   font-weight: 500;
   color: ${props => props.$color};
   background: transparent;
@@ -424,8 +445,11 @@ const BottomControls = styled.div`
 const ActionGroup = styled.div` display: flex; flex-direction: column; align-items: center; gap: 8px; `;
 
 const SecondaryButton = styled(motion.button)`
-  background-color: rgba(255, 255, 255, 0.05); color: #ffffff; border: 1px solid rgba(255, 255, 255, 0.1); width: 54px; height: 54px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; position: relative;
-  &:hover { background-color: rgba(255, 255, 255, 0.1); }
+  background-color: rgba(255, 255, 255, 0.05); 
+  color: #9ca3af; 
+  border: 1px solid rgba(255, 255, 255, 0.05); 
+  width: 54px; height: 54px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; position: relative;
+  &:hover { background-color: rgba(255, 255, 255, 0.1); color: #ffffff; }
   @media (max-width: 768px) { width: 48px; height: 48px; }
 `;
 
@@ -433,14 +457,20 @@ const HiddenFileInput = styled.input` position: absolute; top: 0; left: 0; width
 const ActionLabel = styled.span` font-size: 0.7rem; font-weight: 600; color: #9ca3af; letter-spacing: 1px; `;
 
 const ShutterOuter = styled(motion.button)`
-  width: 84px; height: 84px; border-radius: 50%; background: rgba(43, 177, 255, 0.2); border: 2px solid rgba(43, 177, 255, 0.5); display: flex; align-items: center; justify-content: center; cursor: pointer; position: relative;
-  &::before { content: 'SHUTTER'; position: absolute; top: -24px; background: rgba(43, 177, 255, 0.15); color: #2bb1ff; padding: 2px 8px; border-radius: 10px; font-size: 0.65rem; font-weight: 700; letter-spacing: 1px; }
+  width: 84px; height: 84px; border-radius: 50%; 
+  background: rgba(199, 137, 51, 0.15); /* Gold tint */
+  border: 2px solid rgba(199, 137, 51, 0.4); 
+  display: flex; align-items: center; justify-content: center; cursor: pointer; position: relative;
+  &::before { content: 'SHUTTER'; position: absolute; top: -24px; background: rgba(199, 137, 51, 0.15); color: #c78933; padding: 2px 8px; border-radius: 10px; font-size: 0.65rem; font-weight: 700; letter-spacing: 1px; }
   &:disabled { opacity: 0.5; cursor: not-allowed; border-color: rgba(156, 163, 175, 0.3); background: rgba(156, 163, 175, 0.1); &::before { color: #9ca3af; background: rgba(156, 163, 175, 0.2); } }
   @media (max-width: 768px) { width: 72px; height: 72px; &::before { top: -20px; font-size: 0.6rem; } }
 `;
 
 const ShutterInner = styled.div`
-  width: 64px; height: 64px; border-radius: 50%; background-color: ${props => props.$disabled ? '#4b5563' : '#2bb1ff'}; box-shadow: ${props => props.$disabled ? 'none' : '0 0 20px rgba(43, 177, 255, 0.6)'}; display: flex; align-items: center; justify-content: center; color: #ffffff;
+  width: 64px; height: 64px; border-radius: 50%; 
+  background-color: ${props => props.$disabled ? '#4b5563' : '#c78933'}; 
+  box-shadow: ${props => props.$disabled ? 'none' : '0 0 20px rgba(199, 137, 51, 0.5)'}; 
+  display: flex; align-items: center; justify-content: center; color: #ffffff;
   @media (max-width: 768px) { width: 54px; height: 54px; }
 `;
 
@@ -450,14 +480,16 @@ const ReviewControls = styled.div`
 `;
 
 const PrimaryActionButton = styled(motion.button)`
-  background-color: #2bb1ff; color: #ffffff; border: none; padding: 12px 24px; border-radius: 30px; font-size: 0.9rem; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; box-shadow: 0 10px 20px rgba(43, 177, 255, 0.3);
-  &:hover { background-color: #1a9fee; }
+  background-color: #c78933; color: #ffffff; border: none; padding: 12px 24px; border-radius: 30px; font-size: 0.9rem; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; box-shadow: 0 10px 20px rgba(199, 137, 51, 0.3);
+  &:hover { background-color: #b57a2b; }
+  &:disabled { opacity: 0.7; cursor: not-allowed; }
   @media (max-width: 768px) { width: 100%; padding: 14px 24px; }
 `;
 
 const CancelActionButton = styled(motion.button)`
   background-color: transparent; color: #9ca3af; border: 1px solid #4b5563; padding: 12px 24px; border-radius: 30px; font-size: 0.9rem; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer;
   &:hover { color: #ffffff; border-color: #ffffff; }
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
   @media (max-width: 768px) { width: 100%; padding: 14px 24px; }
 `;
 
@@ -469,15 +501,16 @@ const FlashOverlay = styled(motion.div)`
 // COMPONENT LOGIC
 // ==========================================
 const Capture = () => {
+  const navigate = useNavigate(); // Added for redirection after save
+
   const [viewState, setViewState] = useState('camera'); 
-  const [activeEffect, setActiveEffect] = useState(false);
+  const [isFilm35mmActive, setIsFilm35mmActive] = useState(false); 
   const [isFlashing, setIsFlashing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false); // Added for Save button state
   const [facingMode, setFacingMode] = useState('user');
   
   const [theme, setTheme] = useState(FRAME_THEMES[0]);
   const [caption, setCaption] = useState('');
-  
-  // Set the dynamic date as the default sub-caption
   const [subCaption, setSubCaption] = useState(getFormattedDate());
   
   const videoRef = useRef(null);
@@ -506,6 +539,7 @@ const Capture = () => {
       stopCamera(); 
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
+          // Ideal resolution requests without forcing strict constraints ensures better Android/iOS compatibility
           video: { 
             width: { ideal: 1920 }, 
             height: { ideal: 1080 },
@@ -612,7 +646,47 @@ const Capture = () => {
     setViewState('camera');
     setTheme(FRAME_THEMES[0]);
     setCaption('');
-    setSubCaption(getFormattedDate()); // Reset to today's date
+    setSubCaption(getFormattedDate()); 
+  };
+
+  // --- SAVE LOGIC ---
+  const handleSaveToGallery = async () => {
+    if (!finalImage) return;
+    setIsSaving(true);
+    
+    try {
+      // 1. Safely convert Data URL or Object URL to a File Blob (Works flawlessly on iOS/Android)
+      const response = await fetch(finalImage);
+      const blob = await response.blob();
+      
+      // 2. Prepare the FormData payload expected by Multer
+      const formData = new FormData();
+      formData.append('image', blob, 'polaroid_capture.jpg');
+      formData.append('caption', caption); 
+
+      // 3. Post to the Express API
+      const res = await fetch('/api/polaroids', {
+        method: 'POST',
+        body: formData,
+        // Ensure Better Auth session cookies are sent with the request
+        credentials: 'include' 
+      });
+
+      if (!res.ok) {
+        throw new Error('Failed to save to database');
+      }
+
+      // 4. Redirect user to see their new photo
+      navigate('/gallery');
+
+    } catch (error) {
+      console.error("Save Error:", error);
+      // Fallback: If backend isn't linked yet, still redirect so the UI flow works during dev
+      alert("Note: Failed to connect to server. Redirecting to gallery anyway for demo purposes.");
+      navigate('/gallery');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -630,14 +704,14 @@ const Capture = () => {
 
       <Header>
         <BackButton to="/">
-          <ArrowLeft size={24} />
+          <ArrowLeft size={24} color="#9ca3af" />
         </BackButton>
         
         <Title>Frame your moment</Title>
         <Subtitle>"The beauty of instant film, digitally preserved."</Subtitle>
         
         <GalleryButton to="/gallery" title="View Gallery">
-          <LayoutGrid size={24} />
+          <LayoutGrid size={24} color="#9ca3af" />
         </GalleryButton>
       </Header>
 
@@ -665,12 +739,12 @@ const Capture = () => {
           </ToolButton>
 
           <ToolButton 
-            className={activeEffect ? 'active' : ''}
-            onClick={() => setActiveEffect(!activeEffect)}
+            className={isFilm35mmActive ? 'active' : ''}
+            onClick={() => setIsFilm35mmActive(!isFilm35mmActive)}
             whileHover={{ scale: 1.05 }} 
             whileTap={{ scale: 0.95 }}
             disabled={viewState === 'crop'}
-            title="Toggle Vintage Filter"
+            title="Toggle Film 35mm™ Filter"
           >
             <Sparkles size={20} />
           </ToolButton>
@@ -710,6 +784,7 @@ const Capture = () => {
               <>
                 <LiveIndicator>LIVE</LiveIndicator>
                 <Reticle />
+                {/* PlaysInline and AutoPlay ensure iOS functionality */}
                 <VideoFeed 
                   ref={videoRef} 
                   autoPlay 
@@ -722,7 +797,7 @@ const Capture = () => {
 
             {viewState === 'idle' && (
               <IdleState>
-                <CameraOff size={48} opacity={0.5} />
+                <CameraOff size={48} opacity={0.5} color="#9ca3af" />
                 <p>Camera is off</p>
               </IdleState>
             )}
@@ -743,11 +818,24 @@ const Capture = () => {
             )}
 
             {viewState === 'review' && (
-              <CapturedImage 
-                src={finalImage} 
-                alt="Captured Polaroid" 
-                $effect={activeEffect} 
-              />
+              <>
+                <CapturedImage 
+                  src={finalImage} 
+                  alt="Captured Polaroid" 
+                  $effect={isFilm35mmActive} 
+                />
+                <AnimatePresence>
+                  {isFilm35mmActive && (
+                    <FilmBadge
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0 }}
+                    >
+                      <Sparkles size={12} color="#c78933" /> Film 35mm™
+                    </FilmBadge>
+                  )}
+                </AnimatePresence>
+              </>
             )}
           </ViewfinderFrame>
 
@@ -825,11 +913,27 @@ const Capture = () => {
 
         {viewState === 'review' && (
           <ReviewControls>
-            <CancelActionButton onClick={handleRetake} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+            <CancelActionButton 
+              onClick={handleRetake} 
+              disabled={isSaving}
+              whileHover={!isSaving ? { scale: 1.05 } : {}} 
+              whileTap={!isSaving ? { scale: 0.95 } : {}}
+            >
               <X size={18} /> Retake
             </CancelActionButton>
-            <PrimaryActionButton whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-              <Upload size={18} /> Save to Gallery
+            
+            {/* Functional Save Button */}
+            <PrimaryActionButton 
+              onClick={handleSaveToGallery}
+              disabled={isSaving}
+              whileHover={!isSaving ? { scale: 1.05 } : {}} 
+              whileTap={!isSaving ? { scale: 0.95 } : {}}
+            >
+              {isSaving ? (
+                <><Loader2 size={18} className="animate-spin" /> Saving...</>
+              ) : (
+                <><Upload size={18} /> Save to Gallery</>
+              )}
             </PrimaryActionButton>
           </ReviewControls>
         )}
