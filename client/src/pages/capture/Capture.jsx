@@ -21,6 +21,7 @@ import {
   Loader2 // Added for loading state
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
+import { api } from '../../lib/api'; // Ensure you import the API!
 
 // --- Frame Theme Presets ---
 const FRAME_THEMES = [
@@ -655,35 +656,24 @@ const Capture = () => {
     setIsSaving(true);
     
     try {
-      // 1. Safely convert Data URL or Object URL to a File Blob (Works flawlessly on iOS/Android)
+      // 1. Safely convert Data URL or Object URL to a File Blob
       const response = await fetch(finalImage);
       const blob = await response.blob();
       
-      // 2. Prepare the FormData payload expected by Multer
+      // 2. Prepare the FormData payload
       const formData = new FormData();
       formData.append('image', blob, 'polaroid_capture.jpg');
       formData.append('caption', caption); 
 
-      // 3. Post to the Express API
-      const res = await fetch('/api/polaroids', {
-        method: 'POST',
-        body: formData,
-        // Ensure Better Auth session cookies are sent with the request
-        credentials: 'include' 
-      });
-
-      if (!res.ok) {
-        throw new Error('Failed to save to database');
-      }
+      // 3. Post to the Express API using our new centralized service
+      await api.uploadPolaroid(formData);
 
       // 4. Redirect user to see their new photo
       navigate('/gallery');
 
     } catch (error) {
-      console.error("Save Error:", error);
-      // Fallback: If backend isn't linked yet, still redirect so the UI flow works during dev
-      alert("Note: Failed to connect to server. Redirecting to gallery anyway for demo purposes.");
-      navigate('/gallery');
+      console.error("Save Error:", error.message);
+      alert(`Failed to save: ${error.message}`);
     } finally {
       setIsSaving(false);
     }
