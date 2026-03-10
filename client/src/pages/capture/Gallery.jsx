@@ -438,41 +438,47 @@ const Gallery = () => {
       setIsProcessing(true);
       
       const filterCss = IMAGE_FILTERS[selectedPhoto.filterName] || "none";
-      const bakedImageSrc = await bakeFilterIntoImage(selectedPhoto.imageUrl, filterCss);
       
-      // 1. Pre-load the baked image into memory
-      await new Promise((resolve) => {
-        const img = new Image();
-        img.crossOrigin = "anonymous";
-        img.onload = resolve;
-        img.onerror = resolve;
-        img.src = bakedImageSrc;
-      });
+      // 1. Draw the filtered image onto a background Canvas
+      const img = await createImage(selectedPhoto.imageUrl);
+      const filterCanvas = document.createElement("canvas");
+      filterCanvas.width = img.width;
+      filterCanvas.height = img.height;
+      const ctx = filterCanvas.getContext("2d");
       
-      // 2. Swap the live UI image
-      const imgElement = polaroidRef.current.querySelector('img');
-      const originalFilter = imgElement.style.filter;
-      const originalSrc = imgElement.src;
+      if (filterCss !== "none") {
+          ctx.filter = filterCss;
+      }
+      ctx.drawImage(img, 0, 0);
       
-      imgElement.src = bakedImageSrc;
-      imgElement.style.filter = "none";
-      
-      // 3. Force the browser to wait 150ms to paint the image
-      await new Promise(resolve => setTimeout(resolve, 150));
-
-      // 4. Take the screenshot
-      const canvas = await html2canvas(polaroidRef.current, { 
+      // 2. Take the screenshot & inject the Canvas instantly
+      const screenshotCanvas = await html2canvas(polaroidRef.current, { 
         useCORS: true, 
         scale: 2, 
-        backgroundColor: null 
+        backgroundColor: null,
+        onclone: (clonedDoc) => {
+          const clonedImg = clonedDoc.querySelector('img');
+          if (clonedImg && clonedImg.parentNode) {
+             // Create a safe canvas inside the cloned document
+             const clonedCanvas = clonedDoc.createElement('canvas');
+             clonedCanvas.width = filterCanvas.width;
+             clonedCanvas.height = filterCanvas.height;
+             const clonedCtx = clonedCanvas.getContext('2d');
+             clonedCtx.drawImage(filterCanvas, 0, 0);
+
+             // Match the Polaroid image styling perfectly
+             clonedCanvas.style.width = '100%';
+             clonedCanvas.style.height = '100%';
+             clonedCanvas.style.objectFit = 'cover';
+
+             // Replace the empty <img> tag with our fully drawn <canvas>
+             clonedImg.parentNode.replaceChild(clonedCanvas, clonedImg);
+          }
+        }
       });
       
-      // 5. Restore the original UI
-      imgElement.src = originalSrc;
-      imgElement.style.filter = originalFilter;
-
-      // 6. Download
-      const dataUrl = canvas.toDataURL("image/jpeg", 0.95);
+      // 3. Download the result!
+      const dataUrl = screenshotCanvas.toDataURL("image/jpeg", 0.95);
       const link = document.createElement("a");
       link.download = `PaperGlow-${Date.now()}.jpg`;
       link.href = dataUrl;
@@ -486,7 +492,7 @@ const Gallery = () => {
       setIsProcessing(false);
     }
   };
-  
+
   const handleDelete = async () => {
     if (!window.confirm("Are you sure you want to delete this memory?")) return;
     try {
