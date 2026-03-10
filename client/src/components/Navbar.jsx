@@ -1,222 +1,254 @@
-// Imports
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { Camera, Menu, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+// Added the LogIn icon here!
+import { Camera, Menu, X, LogOut, LogIn } from 'lucide-react';
 
-// Styled Components
+// Import Better Auth
+import { useSession, signOut } from '../lib/auth';
+
+// ==========================================
+// STYLED COMPONENTS
+// ==========================================
 const NavContainer = styled.nav`
-  background-color: #fcfaf8; /* Warm off-white matching the Hero */
-  width: 100%;
-  position: fixed;
+  box-sizing: border-box; 
+  position: sticky;
   top: 0;
-  left: 0;
-  z-index: 100;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05); /* Subtle dark border instead of white */
-`;
-
-const NavContent = styled.div`
-  max-width: 1200px;
-  margin: 0 auto;
+  width: 100%;
   height: 72px;
+  background-color: rgba(252, 250, 248, 0.9);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 2rem;
+  padding: 0 4rem;
+  z-index: 100;
 
-  @media (max-width: 768px) {
-    padding: 0 1.5rem;
+  @media (max-width: 968px) {
+    padding: 0 2rem;
   }
 `;
 
 const Logo = styled(Link)`
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  text-decoration: none;
-`;
-
-const IconWrapper = styled.div`
-  background-color: #c78933; /* Warm gold accent from the Hero */
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-`;
-
-const LogoText = styled.span`
-  color: #121826; /* Dark slate text */
-  font-family: 'Playfair Display', Georgia, serif; /* Matching the elegant typography */
-  font-size: 1.35rem;
+  font-family: 'Inter', sans-serif;
+  font-size: 1.5rem;
   font-weight: 800;
-  letter-spacing: 0px;
+  color: #121826;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  letter-spacing: -0.5px;
+
+  span {
+    color: #c78933;
+  }
 `;
 
-const DesktopLinks = styled.div`
+const RightSection = styled.div`
   display: flex;
-  gap: 2.5rem;
+  align-items: center;
+  gap: 2rem; 
 
-  @media (max-width: 860px) {
+  @media (max-width: 768px) {
     display: none;
   }
+`;
+
+const DesktopMenu = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 1.5rem; 
 `;
 
 const NavLink = styled(Link)`
-  color: #4b5563; /* Soft gray */
-  text-decoration: none;
   font-size: 0.95rem;
-  font-weight: 500;
+  font-weight: 600;
+  color: #4b5563;
+  text-decoration: none;
   transition: color 0.2s ease;
 
   &:hover {
-    color: #c78933; /* Hover turns gold */
+    color: #121826;
   }
 `;
 
-const ActionButtons = styled.div`
+const AuthGroup = styled.div`
   display: flex;
   align-items: center;
-  gap: 1.5rem;
-
-  @media (max-width: 860px) {
-    display: none;
-  }
 `;
 
-const SignInLink = styled(Link)`
-  color: #121826; /* Dark slate text */
-  text-decoration: none;
+// UPDATED: Added flex layout to align the text and icon perfectly
+const LoginButton = styled(Link)`
   font-size: 0.95rem;
   font-weight: 600;
-  transition: opacity 0.2s ease;
-
-  &:hover {
-    opacity: 0.7;
-  }
-`;
-
-const GetStartedButton = styled(Link)`
-  background-color: #c78933; /* Gold button */
-  color: #ffffff;
+  color: #121826;
   text-decoration: none;
-  padding: 10px 20px;
-  border-radius: 30px; /* Pill shape matching the hero CTA */
-  font-weight: 600;
-  font-size: 0.95rem;
-  box-shadow: 0 4px 10px rgba(199, 137, 51, 0.2);
-  transition: background-color 0.2s ease, transform 0.1s ease;
-
-  &:hover {
-    background-color: #b57a2b; /* Darker gold on hover */
-  }
-
-  &:active {
-    transform: scale(0.98);
-  }
-`;
-
-const MobileToggle = styled.button`
-  display: none;
-  background: none;
-  border: none;
-  color: #121826; /* Dark icon for mobile menu */
-  cursor: pointer;
-
-  @media (max-width: 860px) {
-    display: block;
-  }
-`;
-
-const MobileMenu = styled.div`
   display: flex;
-  flex-direction: column;
-  background-color: #fcfaf8; /* Warm off-white */
-  padding: 1rem 2rem 2rem;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-
-  @media (min-width: 861px) {
-    display: none;
-  }
-`;
-
-const MobileLink = styled(Link)`
-  color: #4b5563;
-  text-decoration: none;
-  font-size: 1.1rem;
-  font-weight: 500;
-  padding: 12px 0;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  align-items: center;
+  gap: 6px;
+  transition: color 0.2s ease;
 
   &:hover {
     color: #c78933;
   }
 `;
 
-const MobileButton = styled(Link)`
-  background-color: #c78933;
-  color: #ffffff;
-  text-decoration: none;
-  padding: 12px;
-  border-radius: 30px;
+const LogoutButton = styled.button`
+  background: none;
+  border: none;
+  font-size: 0.95rem;
   font-weight: 600;
-  text-align: center;
-  margin-top: 1.5rem;
-  box-shadow: 0 4px 10px rgba(199, 137, 51, 0.2);
+  color: #ef4444; 
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: color 0.2s ease;
+  padding: 0;
+
+  &:hover {
+    color: #b91c1c;
+  }
 `;
 
-// Component Logic
+const MobileMenuButton = styled.button`
+  display: none;
+  background: none;
+  border: none;
+  color: #121826;
+  cursor: pointer;
+
+  @media (max-width: 768px) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+`;
+
+const MobileDropdown = styled(motion.div)`
+  position: absolute;
+  top: 72px;
+  left: 0;
+  width: 100%;
+  background-color: #fcfaf8;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  padding: 2rem;
+  gap: 1.5rem;
+  z-index: 99;
+  box-sizing: border-box; 
+`;
+
+const MobileLink = styled(Link)`
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #121826;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 8px; /* Added gap in case you want to use icons here too */
+`;
+
+// ==========================================
+// COMPONENT LOGIC
+// ==========================================
 const Navbar = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const location = useLocation();
+  const navigate = useNavigate();
 
-  const toggleMenu = () => {
-    setIsMobileMenuOpen(!isMobileMenuOpen);
+  // Better Auth state
+  const { data: session } = useSession();
+
+  // Close mobile menu when route changes
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [location.pathname]);
+
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      navigate('/');
+    } catch (error) {
+      console.error("Failed to log out:", error);
+    }
   };
 
   return (
     <NavContainer>
-      <NavContent>
-        {/* Logo Section */}
-        <Logo to="/">
-          <IconWrapper>
-            <Camera size={20} color="#ffffff" />
-          </IconWrapper>
-          <LogoText>PaperGlow</LogoText>
-        </Logo>
+      {/* Logo */}
+      <Logo to="/">
+        <Camera size={24} color="#c78933" />
+        Paper<span>Glow</span>
+      </Logo>
 
-        {/* Desktop Center Links */}
-        <DesktopLinks>
-          <NavLink to="/">Home</NavLink>
-          <NavLink to="/about">About</NavLink>
-          <NavLink to="/faq">FAQ</NavLink>
-        </DesktopLinks>
+      {/* Desktop Navigation & Auth */}
+      <RightSection>
+        {session && (
+          <DesktopMenu>
+            <NavLink to="/gallery">Gallery</NavLink>
+            <NavLink to="/capture">Capture</NavLink>
+          </DesktopMenu>
+        )}
 
-        {/* Desktop Action Buttons */}
-        <ActionButtons>
-          <SignInLink to="/login">Sign In</SignInLink>
-          <GetStartedButton to="/login">Get Started</GetStartedButton>
-        </ActionButtons>
+        <AuthGroup>
+          {session ? (
+            <LogoutButton onClick={handleLogout}>
+              Log Out <LogOut size={16} />
+            </LogoutButton>
+          ) : (
+            // NEW: Added the LogIn icon here
+            <LoginButton to="/login">
+              Log In <LogIn size={16} />
+            </LoginButton>
+          )}
+        </AuthGroup>
+      </RightSection>
 
-        {/* Mobile Menu Toggle */}
-        <MobileToggle onClick={toggleMenu}>
-          {isMobileMenuOpen ? <X size={28} /> : <Menu size={28} />}
-        </MobileToggle>
-      </NavContent>
+      {/* Mobile Menu Toggle */}
+      <MobileMenuButton onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
+        {isMobileMenuOpen ? <X size={28} /> : <Menu size={28} />}
+      </MobileMenuButton>
 
-      {/* Mobile Dropdown Menu */}
-      {isMobileMenuOpen && (
-        <MobileMenu>
-          <MobileLink to="/" onClick={toggleMenu}>Home</MobileLink>
-          <MobileLink to="/about" onClick={toggleMenu}>About</MobileLink>
-          <MobileLink to="/faq" onClick={toggleMenu}>FAQ</MobileLink>
-          <MobileLink to="/login" onClick={toggleMenu}>Sign In</MobileLink>
-          <MobileButton to="/login" onClick={toggleMenu}>Get Started</MobileButton>
-        </MobileMenu>
-      )}
+      {/* Mobile Dropdown */}
+      <AnimatePresence>
+        {isMobileMenuOpen && (
+          <MobileDropdown
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
+            style={{ overflow: 'hidden' }}
+          >
+            {session && (
+              <>
+                <MobileLink to="/gallery">Gallery</MobileLink>
+                <MobileLink to="/capture">Capture</MobileLink>
+              </>
+            )}
+
+            <div style={{ height: '1px', background: '#e5e7eb', margin: '0.5rem 0' }} />
+
+            {session ? (
+              <LogoutButton onClick={handleLogout} style={{ fontSize: '1.1rem' }}>
+                Log Out <LogOut size={18} />
+              </LogoutButton>
+            ) : (
+              // NEW: Added the LogIn icon to the mobile menu as well
+              <MobileLink to="/login" style={{ color: '#c78933' }}>
+                Log In <LogIn size={18} />
+              </MobileLink>
+            )}
+          </MobileDropdown>
+        )}
+      </AnimatePresence>
     </NavContainer>
   );
 };
 
-// Export
 export default Navbar;

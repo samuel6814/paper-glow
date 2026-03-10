@@ -1,3 +1,5 @@
+// server/prisma/schema.prisma
+
 generator client {
   provider = "prisma-client-js"
   engineType = "binary"
@@ -9,13 +11,13 @@ datasource db {
 }
 
 model User {
-  id            String     @id @default(uuid()) // UUID
-  email         String     @unique              // Unique
-  name          String                          //
+  id            String    @id @default(uuid())
+  email         String    @unique
+  name          String
   emailVerified Boolean?
-  image         String?                         // Maps to avatarUrl
-  createdAt     DateTime   @default(now())      // Timestamp
-  updatedAt     DateTime   @updatedAt
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
   sessions      Session[]
   accounts      Account[]
   polaroids     Polaroid[]
@@ -60,10 +62,16 @@ model Verification {
 }
 
 model Polaroid {
-  id        String   @id @default(uuid()) // UUID
-  userId    String                        // Foreign Key linking to User
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  imageUrl  String                        // Cloudinary secure URL
-  caption   String?                       // Optional
-  createdAt DateTime @default(now())      // Timestamp
+  id            String   @id @default(uuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  imageUrl      String   
+  caption       String?  
+  
+  // --- NEW UI STATE FIELDS ---
+  subCaption    String?            // Stores the bottom date/text
+  theme         String   @default("classic") // Stores 'classic', 'coral', 'slate', or 'sand'
+  filterName String @default("none")     
+  
+  createdAt     DateTime @default(now())
 }

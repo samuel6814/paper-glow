@@ -5,14 +5,19 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, RotateCcw, Mail, ArrowLeft } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 
+// Import Better Auth
+import { signIn, signUp } from '../../lib/auth';
+
 // Import Layout Components
 import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
 
-// Styled Components
+// ==========================================
+// STYLED COMPONENTS
+// ==========================================
 const LoginContainer = styled.div`
   min-height: calc(100vh - 72px);
-  background-color: #fcfaf8; /* Warm off-white matching Hero */
+  background-color: #fcfaf8; 
   background-image: radial-gradient(circle at 50% 50%, #fffcf5 0%, #fcfaf8 100%);
   display: flex;
   align-items: center;
@@ -45,14 +50,14 @@ const LeftColumn = styled(motion.div)`
   align-items: center;
 
   @media (max-width: 968px) {
-    display: none; /* Hide polaroid on mobile to prioritize the form */
+    display: none; 
   }
 `;
 
 const PolaroidCard = styled.div`
   position: relative;
   background-color: #ffffff;
-  padding: 16px 16px 70px 16px; /* Thick bottom border */
+  padding: 16px 16px 70px 16px; 
   box-shadow: 0 25px 50px rgba(0, 0, 0, 0.1);
   border: 1px solid #f3f4f6;
   border-radius: 2px;
@@ -73,7 +78,7 @@ const Photo = styled.img`
   width: 100%;
   height: 100%;
   object-fit: cover;
-  filter: sepia(0.2) contrast(1.05); /* Slight vintage warmth */
+  filter: sepia(0.2) contrast(1.05); 
 `;
 
 const Caption = styled.div`
@@ -90,7 +95,7 @@ const FloatingBadge = styled.div`
   position: absolute;
   bottom: -20px;
   right: -20px;
-  background-color: #e69d35; /* Gold accent from Hero */
+  background-color: #e69d35; 
   width: 50px;
   height: 50px;
   border-radius: 12px;
@@ -134,19 +139,19 @@ const Title = styled.h1`
   font-size: clamp(2.5rem, 4vw, 3.5rem);
   font-weight: 800;
   line-height: 1.1;
-  color: #121826; /* Dark slate text */
+  color: #121826; 
   letter-spacing: -1px;
   margin-bottom: 1rem;
 `;
 
 const Highlight = styled.span`
-  color: #e69d35; /* Gold accent */
+  color: #e69d35; 
 `;
 
 const Description = styled.p`
   font-size: 1rem;
   line-height: 1.6;
-  color: #4b5563; /* Soft gray */
+  color: #4b5563; 
   margin-bottom: 2.5rem;
 `;
 
@@ -189,14 +194,8 @@ const Divider = styled.div`
     flex: 1;
     border-bottom: 1px solid #e5e7eb;
   }
-
-  &::before {
-    margin-right: 1em;
-  }
-
-  &::after {
-    margin-left: 1em;
-  }
+  &::before { margin-right: 1em; }
+  &::after { margin-left: 1em; }
 `;
 
 const PrimaryButton = styled.button`
@@ -215,13 +214,11 @@ const PrimaryButton = styled.button`
   cursor: pointer;
   transition: all 0.2s ease;
 
-  &:hover {
-    background-color: #e5e7eb;
-  }
+  &:hover { background-color: #e5e7eb; }
 `;
 
 const ActionButton = styled.button`
-  background-color: #c78933; /* Gold accent */
+  background-color: #c78933; 
   color: #ffffff;
   border: none;
   width: 100%;
@@ -236,8 +233,12 @@ const ActionButton = styled.button`
   box-shadow: 0 10px 20px rgba(199, 137, 51, 0.2);
   transition: background-color 0.2s ease;
 
-  &:hover {
-    background-color: #b57a2b;
+  &:hover { background-color: #b57a2b; }
+  &:disabled {
+    background-color: #e5e7eb;
+    color: #9ca3af;
+    cursor: not-allowed;
+    box-shadow: none;
   }
 `;
 
@@ -257,13 +258,8 @@ const Input = styled.input`
   outline: none;
   transition: border-color 0.2s;
 
-  &:focus {
-    border-color: #c78933; /* Focus outline is gold */
-  }
-
-  &::placeholder {
-    color: #9ca3af;
-  }
+  &:focus { border-color: #c78933; }
+  &::placeholder { color: #9ca3af; }
 `;
 
 const FormHeader = styled.div`
@@ -281,10 +277,7 @@ const BackButton = styled.button`
   display: flex;
   align-items: center;
   padding: 0;
-
-  &:hover {
-    color: #121826;
-  }
+  &:hover { color: #121826; }
 `;
 
 const ToggleText = styled.p`
@@ -296,14 +289,11 @@ const ToggleText = styled.p`
   button {
     background: none;
     border: none;
-    color: #c78933; /* Gold text */
+    color: #c78933; 
     font-weight: 600;
     cursor: pointer;
     padding: 0 4px;
-
-    &:hover {
-      text-decoration: underline;
-    }
+    &:hover { text-decoration: underline; }
   }
 `;
 
@@ -318,7 +308,6 @@ const TermsText = styled.p`
     color: #4b5563;
     text-decoration: none;
     border-bottom: 1px solid rgba(75, 85, 99, 0.3);
-
     &:hover {
       color: #121826;
       border-color: #121826;
@@ -326,7 +315,7 @@ const TermsText = styled.p`
   }
 `;
 
-// Google Icon SVG Component
+// Google Icon SVG
 const GoogleIcon = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
     <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
@@ -337,14 +326,16 @@ const GoogleIcon = () => (
 );
 
 
-// Component Logic
+// ==========================================
+// COMPONENT LOGIC
+// ==========================================
 const Login = () => {
   const navigate = useNavigate();
   const [authMode, setAuthMode] = useState('initial'); // 'initial' or 'email'
   const [isSignUp, setIsSignUp] = useState(false);
   const [formData, setFormData] = useState({ name: '', email: '', password: '' });
+  const [isLoading, setIsLoading] = useState(false); // New loading state!
 
-  // Mock image for the polaroid
   const heroImage = "https://images.unsplash.com/photo-1511216335778-7cb8f49fa7a3?auto=format&fit=crop&w=800&q=80";
 
   const handleInputChange = (e) => {
@@ -352,18 +343,37 @@ const Login = () => {
   };
 
   const handleGoogleLogin = () => {
-    console.log("Initiating Google Login...");
-    navigate('/capture');
+    // Requires Better Auth Google configuration in backend first
+    alert("Google login coming soon!"); 
   };
 
-  const handleEmailSubmit = (e) => {
+  // REAL AUTHENTICATION LOGIC
+  const handleEmailSubmit = async (e) => {
     e.preventDefault();
+    setIsLoading(true);
+
     if (isSignUp) {
-      console.log("Signing up with:", formData);
+      // SIGN UP FLOW
+      await signUp.email({
+        email: formData.email,
+        password: formData.password,
+        name: formData.name,
+      }, {
+        onSuccess: () => navigate('/capture'),
+        onError: (ctx) => alert(`Signup Failed: ${ctx.error.message}`)
+      });
     } else {
-      console.log("Logging in with:", formData.email);
+      // SIGN IN FLOW
+      await signIn.email({
+        email: formData.email,
+        password: formData.password,
+      }, {
+        onSuccess: () => navigate('/capture'),
+        onError: (ctx) => alert(`Login Failed: ${ctx.error.message}`)
+      });
     }
-    navigate('/capture');
+
+    setIsLoading(false);
   };
 
   return (
@@ -372,7 +382,6 @@ const Login = () => {
       <LoginContainer>
         <ContentGrid>
           
-          {/* Left Column: Polaroid Visuals */}
           <LeftColumn
             initial={{ opacity: 0, x: -30 }}
             animate={{ opacity: 1, x: 0 }}
@@ -389,7 +398,6 @@ const Login = () => {
             </PolaroidCard>
           </LeftColumn>
 
-          {/* Right Column: Auth Logic */}
           <RightColumn
             initial={{ opacity: 0, x: 30 }}
             animate={{ opacity: 1, x: 0 }}
@@ -411,7 +419,6 @@ const Login = () => {
 
             <AnimatePresence mode="wait">
               {authMode === 'initial' ? (
-                // View 1: Initial Social & Email Buttons
                 <motion.div
                   key="initial-buttons"
                   initial={{ opacity: 0, y: 10 }}
@@ -430,7 +437,6 @@ const Login = () => {
                   </PrimaryButton>
                 </motion.div>
               ) : (
-                // View 2: Email & Password Form
                 <Form
                   key="email-form"
                   initial={{ opacity: 0, y: 10 }}
@@ -440,7 +446,10 @@ const Login = () => {
                   onSubmit={handleEmailSubmit}
                 >
                   <FormHeader>
-                    <BackButton type="button" onClick={() => setAuthMode('initial')}>
+                    <BackButton type="button" onClick={() => {
+                        setAuthMode('initial');
+                        setFormData({ name: '', email: '', password: '' }); // Clear form when going back
+                    }}>
                       <ArrowLeft size={20} />
                     </BackButton>
                     <span style={{ color: '#121826', fontWeight: 700 }}>
@@ -455,7 +464,7 @@ const Login = () => {
                       placeholder="Full Name" 
                       value={formData.name}
                       onChange={handleInputChange}
-                      required 
+                      required={isSignUp}
                     />
                   )}
                   
@@ -471,19 +480,26 @@ const Login = () => {
                   <Input 
                     type="password" 
                     name="password" 
-                    placeholder="Password" 
+                    placeholder="Password (min 8 chars)" 
                     value={formData.password}
                     onChange={handleInputChange}
+                    minLength={8} // HTML fallback
                     required 
                   />
 
-                  <ActionButton type="submit">
-                    {isSignUp ? 'Sign Up' : 'Sign In'}
+                  <ActionButton type="submit" disabled={isLoading}>
+                    {isLoading ? 'Processing...' : (isSignUp ? 'Sign Up' : 'Sign In')}
                   </ActionButton>
 
                   <ToggleText>
                     {isSignUp ? "Already have an account?" : "Don't have an account?"}
-                    <button type="button" onClick={() => setIsSignUp(!isSignUp)}>
+                    <button 
+                      type="button" 
+                      onClick={() => {
+                          setIsSignUp(!isSignUp);
+                          setFormData({ name: '', email: '', password: '' }); // Clear form when toggling
+                      }}
+                    >
                       {isSignUp ? 'Log in' : 'Sign up'}
                     </button>
                   </ToggleText>
@@ -503,5 +519,4 @@ const Login = () => {
   );
 };
 
-// Export
 export default Login;

@@ -1,6 +1,6 @@
 // client/src/lib/api.js
 
-const API_BASE = '/api';
+const API_BASE = 'http://localhost:5000/api';
 
 /**
  * Global response handler for all API calls

@@ -1,8 +1,8 @@
 import { createAuthClient } from "better-auth/react";
 
-// Initialize the Better Auth client. 
-// Because we set up the Vite proxy, this will automatically know to talk to "http://localhost:5000/api/auth"
-export const authClient = createAuthClient();
+export const authClient = createAuthClient({
+    // Add this line so Better Auth knows where your Express server is!
+    baseURL: "http://localhost:5000"
+});
 
-// Export the specific hooks and functions we need across our app
 export const { signIn, signUp, useSession, signOut } = authClient;
