@@ -916,26 +916,40 @@ const Capture = () => {
     setIsSaving(true);
     try {
       document.activeElement?.blur();
-
-      // Bake filter and use onclone to apply it ONLY to the screenshot, keeping UI smooth
-      const bakedImageSrc = await bakeFilterIntoImage(
-        finalImage,
-        activeFilter.css
-      );
-
-      const canvas = await html2canvas(polaroidRef.current, {
-        useCORS: true,
-        scale: 2,
-        backgroundColor: null,
-        onclone: (clonedDoc) => {
-          const imgElement = clonedDoc.querySelector("img");
-          if (imgElement) {
-            imgElement.src = bakedImageSrc;
-            imgElement.style.filter = "none";
-          }
-        },
+      
+      const bakedImageSrc = await bakeFilterIntoImage(finalImage, activeFilter.css);
+      
+      // 1. Pre-load the baked image into memory so it renders instantly
+      await new Promise((resolve) => {
+        const img = new Image();
+        img.onload = resolve;
+        img.onerror = resolve;
+        img.src = bakedImageSrc;
       });
+      
+      // 2. Swap the live UI image
+      const imgElement = polaroidRef.current.querySelector('img');
+      const originalSrc = imgElement.src;
+      const originalFilter = imgElement.style.filter;
+      
+      imgElement.src = bakedImageSrc;
+      imgElement.style.filter = "none";
+      
+      // 3. Force the browser to wait 150ms to paint the image on the screen
+      await new Promise(resolve => setTimeout(resolve, 150));
 
+      // 4. Take the screenshot
+      const canvas = await html2canvas(polaroidRef.current, { 
+        useCORS: true, 
+        scale: 2, 
+        backgroundColor: null 
+      });
+      
+      // 5. Restore the original UI instantly
+      imgElement.src = originalSrc;
+      imgElement.style.filter = originalFilter;
+
+      // 6. Download
       const dataUrl = canvas.toDataURL("image/jpeg", 0.95);
       const link = document.createElement("a");
       link.download = `PaperGlow-${Date.now()}.jpg`;
@@ -950,7 +964,7 @@ const Capture = () => {
       setIsSaving(false);
     }
   };
-
+  
   const handleSaveToGallery = async () => {
     if (!finalImage) return;
     setIsSaving(true);
