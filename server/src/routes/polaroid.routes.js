@@ -45,8 +45,8 @@ router.post('/', upload.single('image'), async (req, res) => {
       return res.status(400).json({ error: "No image file provided." });
     }
 
-    // 3. Extract text fields from the FormData (Now capturing filterName!)
-    const { caption, subCaption, theme, filterName } = req.body;
+    // 3. Extract text fields from the FormData (Now capturing filterName and fontFamily!)
+    const { caption, subCaption, theme, filterName, fontFamily } = req.body;
 
     // 4. Upload to Cloudinary
     const uploadStream = cloudinary.uploader.upload_stream(
@@ -65,7 +65,8 @@ router.post('/', upload.single('image'), async (req, res) => {
               caption: caption || "",
               subCaption: subCaption || "",
               theme: theme || "classic",
-              filterName: filterName || "none", // Saving the new filter string!
+              filterName: filterName || "none", 
+              fontFamily: fontFamily || "caveat", // NEW: Saving the font style!
               userId: session.user.id,
             },
           });
@@ -115,8 +116,8 @@ router.put('/:id', async (req, res) => {
   
       const { id } = req.params;
       
-      // Extract filterName here too, so they can edit it in the gallery later!
-      const { caption, subCaption, theme, filterName } = req.body;
+      // Extract fontFamily here too, so they can edit it in the gallery!
+      const { caption, subCaption, theme, filterName, fontFamily } = req.body;
   
       // 1. Security Check: Ensure the polaroid exists and belongs to the logged-in user
       const existing = await prisma.polaroid.findUnique({ where: { id } });
@@ -127,7 +128,7 @@ router.put('/:id', async (req, res) => {
       // 2. Update the record
       const updated = await prisma.polaroid.update({
         where: { id },
-        data: { caption, subCaption, theme, filterName } // Applied here
+        data: { caption, subCaption, theme, filterName, fontFamily } // Applied here
       });
   
       res.json(updated);

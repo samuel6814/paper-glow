@@ -20,6 +20,7 @@ import {
   Palette,
   Loader2,
   Wand2,
+  Type, // NEW: Imported for the font selector
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "../../lib/api";
@@ -56,7 +57,15 @@ const FRAME_THEMES = [
   },
 ];
 
-// --- NEW: Image Filters ---
+// --- NEW: Font Presets ---
+const FONT_OPTIONS = [
+  { id: "caveat", css: "'Caveat', cursive" },
+  { id: "kalam", css: "'Kalam', cursive" },
+  { id: "marker", css: "'Permanent Marker', cursive" },
+  { id: "indie", css: "'Indie Flower', cursive" },
+];
+
+// --- Image Filters ---
 const IMAGE_FILTERS = [
   { id: "none", name: "Normal", css: "none" },
   {
@@ -133,6 +142,19 @@ async function getCroppedImg(imageSrc, pixelCrop) {
     canvas.toBlob((file) => resolve(URL.createObjectURL(file)), "image/jpeg");
   });
 }
+
+// NEW: Helper to permanently burn the CSS filter into the image pixels for downloading
+const bakeFilterIntoImage = async (imageSrc, filterCss) => {
+  if (filterCss === "none") return imageSrc;
+  const img = await createImage(imageSrc);
+  const canvas = document.createElement("canvas");
+  canvas.width = img.width;
+  canvas.height = img.height;
+  const ctx = canvas.getContext("2d");
+  ctx.filter = filterCss;
+  ctx.drawImage(img, 0, 0);
+  return canvas.toDataURL("image/jpeg", 0.95);
+};
 
 // ==========================================
 // STYLED COMPONENTS
@@ -273,6 +295,9 @@ const RightToolbar = styled(motion.div)`
     padding: 8px 16px;
     border-radius: 30px;
     margin-top: 1rem;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    justify-content: center;
   }
 `;
 
@@ -287,6 +312,23 @@ const ColorSwatch = styled(motion.button)`
   outline: none;
   box-shadow: ${(props) =>
     props.$isActive ? "0 0 10px rgba(199, 137, 51, 0.5)" : "none"};
+`;
+
+// NEW: Font selection button
+const FontButton = styled(motion.button)`
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid ${(props) => (props.$isActive ? "#c78933" : "transparent")};
+  cursor: pointer;
+  outline: none;
+  font-family: ${(props) => props.$fontFamily};
 `;
 
 const ToolButton = styled(motion.button)`
@@ -319,7 +361,6 @@ const ToolButton = styled(motion.button)`
   }
 `;
 
-// NEW CONTAINER: Wraps the wrapper and the menu so `overflow: hidden` doesn't hide the menu
 const PolaroidContainer = styled.div`
   position: relative;
   display: flex;
@@ -405,7 +446,7 @@ const CaptionInput = styled.input`
   left: 0;
   width: 100%;
   text-align: center;
-  font-family: "Caveat", cursive, serif;
+  font-family: ${(props) => props.$fontFamily}; /* Dynamically updated font */
   font-size: 1.8rem;
   color: ${(props) => props.$color};
   background: transparent;
@@ -438,7 +479,7 @@ const BottomStrip = styled.div`
 const SubCaptionInput = styled.input`
   width: 100%;
   text-align: center;
-  font-family: "Caveat", cursive, serif;
+  font-family: ${(props) => props.$fontFamily}; /* Dynamically updated font */
   font-size: 1.2rem;
   font-weight: 500;
   color: ${(props) => props.$color};
@@ -500,7 +541,6 @@ const LiveIndicator = styled.div`
   }
 `;
 
-// FIXED FILTER MENU: Absolute positioned outside the overflow hidden boundary
 const FilterMenu = styled(motion.div)`
   position: absolute;
   bottom: -55px;
@@ -749,6 +789,7 @@ const Capture = () => {
   const [facingMode, setFacingMode] = useState("user");
 
   const [theme, setTheme] = useState(FRAME_THEMES[0]);
+  const [activeFont, setActiveFont] = useState(FONT_OPTIONS[0]); // NEW: Font State
   const [activeFilter, setActiveFilter] = useState(IMAGE_FILTERS[0]);
   const [showFilters, setShowFilters] = useState(false);
 
@@ -877,20 +918,48 @@ const Capture = () => {
     setUploadedImage(null);
     setViewState("camera");
     setTheme(FRAME_THEMES[0]);
+    setActiveFont(FONT_OPTIONS[0]);
     setActiveFilter(IMAGE_FILTERS[0]);
     setCaption("");
     setSubCaption(getFormattedDate());
   };
 
   const handleSaveToDevice = async () => {
-    if (!polaroidRef.current) return;
+    if (!polaroidRef.current || !finalImage) return;
+    setIsSaving(true);
+
     try {
       document.activeElement?.blur();
+
+      // 1. Bake the filter into the image so html2canvas captures it
+      const bakedImageSrc = await bakeFilterIntoImage(
+        finalImage,
+        activeFilter.css
+      );
+
+      // 2. Temporarily swap the UI image with the "baked" image
+      const imgElement = polaroidRef.current.querySelector("img");
+      const originalFilter = imgElement.style.filter;
+      const originalSrc = imgElement.src;
+
+      imgElement.src = bakedImageSrc;
+      imgElement.style.filter = "none"; // Remove CSS filter so it doesn't double-apply
+
+      // Wait a tiny moment for the DOM to update
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // 3. Take the screenshot
       const canvas = await html2canvas(polaroidRef.current, {
         useCORS: true,
         scale: 2,
         backgroundColor: null,
       });
+
+      // 4. Restore the UI image back to normal
+      imgElement.src = originalSrc;
+      imgElement.style.filter = originalFilter;
+
+      // 5. Download the screenshot
       const dataUrl = canvas.toDataURL("image/jpeg", 0.95);
       const link = document.createElement("a");
       link.download = `PaperGlow-${Date.now()}.jpg`;
@@ -900,6 +969,9 @@ const Capture = () => {
       document.body.removeChild(link);
     } catch (error) {
       alert("Oops! Couldn't save the image to your device.");
+      console.error(error);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -915,8 +987,8 @@ const Capture = () => {
       formData.append("caption", caption);
       formData.append("subCaption", subCaption);
       formData.append("theme", theme.id);
+      formData.append("fontFamily", activeFont.id); // NEW: Send the font choice to the backend!
       formData.append("filterName", activeFilter.id);
-      formData.append("hasFilmFilter", (activeFilter.id !== "none").toString()); // Fallback for old schema
 
       await api.uploadPolaroid(formData);
       navigate("/gallery");
@@ -993,22 +1065,65 @@ const Capture = () => {
               <Palette
                 size={20}
                 color="#9ca3af"
-                style={{ margin: "0 auto 8px", display: "block" }}
+                style={{ margin: "0 auto 4px", display: "block" }}
               />
-              {FRAME_THEMES.map((t) => (
-                <ColorSwatch
-                  key={t.id}
-                  $color={t.bg}
-                  $isActive={theme.id === t.id}
-                  onClick={() => setTheme(t)}
-                  title={`Theme: ${t.id}`}
-                />
-              ))}
+              <div
+                style={{
+                  display: "flex",
+                  gap: "8px",
+                  flexWrap: "wrap",
+                  justifyContent: "center",
+                }}
+              >
+                {FRAME_THEMES.map((t) => (
+                  <ColorSwatch
+                    key={t.id}
+                    $color={t.bg}
+                    $isActive={theme.id === t.id}
+                    onClick={() => setTheme(t)}
+                    title={`Theme: ${t.id}`}
+                  />
+                ))}
+              </div>
+
+              <div
+                style={{
+                  width: "100%",
+                  height: "1px",
+                  background: "rgba(255,255,255,0.1)",
+                  margin: "8px 0",
+                }}
+              />
+
+              <Type
+                size={18}
+                color="#9ca3af"
+                style={{ margin: "0 auto 4px", display: "block" }}
+              />
+              <div
+                style={{
+                  display: "flex",
+                  gap: "8px",
+                  flexWrap: "wrap",
+                  justifyContent: "center",
+                }}
+              >
+                {FONT_OPTIONS.map((f) => (
+                  <FontButton
+                    key={f.id}
+                    $fontFamily={f.css}
+                    $isActive={activeFont.id === f.id}
+                    onClick={() => setActiveFont(f)}
+                    title={`Font: ${f.id}`}
+                  >
+                    Ag
+                  </FontButton>
+                ))}
+              </div>
             </RightToolbar>
           )}
         </AnimatePresence>
 
-        {/* CONTAINER ADDED HERE SO OVERFLOW HIDDEN DOES NOT HIDE THE MENU */}
         <PolaroidContainer>
           <PolaroidWrapper
             ref={polaroidRef}
@@ -1083,6 +1198,7 @@ const Capture = () => {
               value={caption}
               onChange={(e) => setCaption(e.target.value)}
               $color={theme.text}
+              $fontFamily={activeFont.css}
               disabled={viewState !== "review"}
               spellCheck="false"
             />
@@ -1092,13 +1208,13 @@ const Capture = () => {
                 value={subCaption}
                 onChange={(e) => setSubCaption(e.target.value)}
                 $color={theme.subText}
+                $fontFamily={activeFont.css}
                 disabled={viewState !== "review"}
                 spellCheck="false"
               />
             </BottomStrip>
           </PolaroidWrapper>
 
-          {/* HORIZONTAL SCROLLING FILTER MENU */}
           <AnimatePresence>
             {showFilters && (
               <FilterMenu

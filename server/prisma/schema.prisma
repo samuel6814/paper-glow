@@ -67,9 +67,8 @@ model Polaroid {
   caption    String?
   subCaption String?
   theme      String   @default("classic")
-  
+  fontFamily String   @default("caveat") // NEW: Stores the chosen font style
   filterName String   @default("none") 
-  
   createdAt  DateTime @default(now())
 
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)

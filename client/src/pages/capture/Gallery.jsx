@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, ArrowLeft, Loader2, Image as ImageIcon, Trash2, Download, Edit2, X, Save } from 'lucide-react';
+import { Plus, ArrowLeft, Loader2, Image as ImageIcon, Trash2, Download, Edit2, X, Save, Type } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import html2canvas from 'html2canvas';
 import { api } from '../../lib/api';
@@ -14,7 +14,14 @@ const FRAME_THEMES = {
   sand: { id: 'sand', bg: "#e5d3b3", text: "#3f2a1d", subText: "#785b46", strip: "#d4c09e" },
 };
 
-// NEW: Image Filters Dictionary to map database strings to CSS!
+// NEW: Font Presets
+const FONT_OPTIONS = [
+  { id: "caveat", css: "'Caveat', cursive" },
+  { id: "kalam", css: "'Kalam', cursive" },
+  { id: "marker", css: "'Permanent Marker', cursive" },
+  { id: "indie", css: "'Indie Flower', cursive" },
+];
+
 const IMAGE_FILTERS = {
   none: "none",
   film35mm: "contrast(1.1) brightness(1.1) saturate(1.2) sepia(0.3) hue-rotate(-10deg)",
@@ -24,6 +31,33 @@ const IMAGE_FILTERS = {
   cyber: "hue-rotate(90deg) saturate(2) contrast(1.2)",
   dream: "blur(1px) contrast(1.1) brightness(1.1) saturate(1.3)",
   cool: "sepia(0.2) hue-rotate(180deg) saturate(1.2)",
+};
+
+// --- Helper Functions ---
+const getFontCss = (fontId) => {
+  const font = FONT_OPTIONS.find(f => f.id === fontId);
+  return font ? font.css : "'Caveat', cursive";
+};
+
+const createImage = (url) =>
+  new Promise((resolve, reject) => {
+    const image = new Image();
+    image.addEventListener("load", () => resolve(image));
+    image.addEventListener("error", (error) => reject(error));
+    image.setAttribute("crossOrigin", "anonymous");
+    image.src = url;
+  });
+
+const bakeFilterIntoImage = async (imageSrc, filterCss) => {
+  if (!filterCss || filterCss === "none") return imageSrc;
+  const img = await createImage(imageSrc);
+  const canvas = document.createElement("canvas");
+  canvas.width = img.width;
+  canvas.height = img.height;
+  const ctx = canvas.getContext("2d");
+  ctx.filter = filterCss;
+  ctx.drawImage(img, 0, 0);
+  return canvas.toDataURL("image/jpeg", 0.95);
 };
 
 // ==========================================
@@ -81,13 +115,11 @@ const PolaroidCard = styled(motion.div)`
 
 const PhotoFrame = styled.div`
   width: 100%; aspect-ratio: 1 / 1; background-color: #1a1e23; overflow: hidden;
-  /* Add vignette for 360 lens if needed */
   box-shadow: ${props => props.$is360 ? "inset 0 0 60px 15px rgba(0,0,0,0.8)" : "inset 0 2px 4px rgba(0,0,0,0.1)"};
 `;
 
 const Photo = styled.img`
   width: 100%; height: 100%; object-fit: cover;
-  /* Now accepts the full CSS string from our dictionary */
   filter: ${props => props.$effectCss}; 
 `;
 
@@ -95,12 +127,13 @@ const CaptionBlock = styled.div`
   position: absolute; bottom: 12px; left: 0; width: 100%; text-align: center;
 `;
 
+// NEW: Accepts dynamic font-family
 const Caption = styled.h3`
-  font-family: "Caveat", cursive; font-size: 1.6rem; color: ${props => props.$theme.text}; margin-bottom: -4px;
+  font-family: ${props => props.$fontFamily}; font-size: 1.6rem; color: ${props => props.$theme.text}; margin-bottom: -4px;
 `;
 
 const SubCaption = styled.p`
-  font-family: "Caveat", cursive; font-size: 1.1rem; color: ${props => props.$theme.subText};
+  font-family: ${props => props.$fontFamily}; font-size: 1.1rem; color: ${props => props.$theme.subText};
 `;
 
 const FAB = styled(Link)`
@@ -163,12 +196,20 @@ const Input = styled.input`
 `;
 
 const ThemeSelector = styled.div`
-  display: flex; justify-content: space-between; gap: 10px; margin-bottom: 10px;
+  display: flex; justify-content: space-between; gap: 10px; margin-bottom: 5px;
 `;
 
 const Swatch = styled.button`
   width: 30px; height: 30px; border-radius: 50%; background-color: ${props => props.$color};
   border: 2px solid ${props => props.$active ? '#c78933' : 'transparent'}; cursor: pointer;
+`;
+
+// NEW: Font selector button
+const FontButton = styled.button`
+  width: 30px; height: 30px; border-radius: 50%; background-color: rgba(255,255,255,0.1);
+  color: #fff; font-size: 1.1rem; display: flex; align-items: center; justify-content: center;
+  border: 2px solid ${(props) => (props.$active ? "#c78933" : "transparent")};
+  cursor: pointer; outline: none; font-family: ${(props) => props.$fontFamily};
 `;
 
 // ==========================================
@@ -181,7 +222,8 @@ const Gallery = () => {
   // Modal State
   const [selectedPhoto, setSelectedPhoto] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [editData, setEditData] = useState({ caption: '', subCaption: '', theme: 'classic' });
+  // NEW: Added fontFamily to editData state
+  const [editData, setEditData] = useState({ caption: '', subCaption: '', theme: 'classic', fontFamily: 'caveat' });
   const [isProcessing, setIsProcessing] = useState(false);
   
   const polaroidRef = useRef(null);
@@ -203,7 +245,12 @@ const Gallery = () => {
 
   const openModal = (photo) => {
     setSelectedPhoto(photo);
-    setEditData({ caption: photo.caption || '', subCaption: photo.subCaption || '', theme: photo.theme || 'classic' });
+    setEditData({ 
+      caption: photo.caption || '', 
+      subCaption: photo.subCaption || '', 
+      theme: photo.theme || 'classic',
+      fontFamily: photo.fontFamily || 'caveat' // Initialize font selection
+    });
     setIsEditing(false);
   };
 
@@ -214,17 +261,43 @@ const Gallery = () => {
 
   // --- ACTIONS ---
   const handleDownload = async () => {
-    if (!polaroidRef.current) return;
+    if (!polaroidRef.current || !selectedPhoto) return;
     try {
       setIsProcessing(true);
-      const canvas = await html2canvas(polaroidRef.current, { useCORS: true, scale: 2 });
+      
+      // 1. Bake the filter into the image so html2canvas captures it
+      const filterCss = IMAGE_FILTERS[selectedPhoto.filterName] || "none";
+      const bakedImageSrc = await bakeFilterIntoImage(selectedPhoto.imageUrl, filterCss);
+      
+      // 2. Temporarily swap the UI image with the "baked" image
+      const imgElement = polaroidRef.current.querySelector('img');
+      const originalFilter = imgElement.style.filter;
+      const originalSrc = imgElement.src;
+      
+      imgElement.src = bakedImageSrc;
+      imgElement.style.filter = "none";
+      
+      // Wait a tiny moment for the DOM to update
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // 3. Take screenshot
+      const canvas = await html2canvas(polaroidRef.current, { useCORS: true, scale: 2, backgroundColor: null });
+      
+      // 4. Restore original state
+      imgElement.src = originalSrc;
+      imgElement.style.filter = originalFilter;
+
+      // 5. Download
       const dataUrl = canvas.toDataURL("image/jpeg", 0.95);
       const link = document.createElement("a");
       link.download = `PaperGlow-${Date.now()}.jpg`;
       link.href = dataUrl;
+      document.body.appendChild(link);
       link.click();
+      document.body.removeChild(link);
     } catch (error) {
       alert("Failed to download image.");
+      console.error(error);
     } finally {
       setIsProcessing(false);
     }
@@ -279,6 +352,7 @@ const Gallery = () => {
           {photos.map((photo, index) => {
             const currentTheme = FRAME_THEMES[photo.theme] || FRAME_THEMES.classic;
             const randomRotation = (index % 7) - 3; 
+            const currentFontCss = getFontCss(photo.fontFamily); // Lookup the font
 
             return (
               <PolaroidCard 
@@ -294,11 +368,12 @@ const Gallery = () => {
                     alt={photo.caption || "Polaroid"} 
                     $effectCss={IMAGE_FILTERS[photo.filterName] || "none"} 
                     loading="lazy" 
+                    crossOrigin="anonymous"
                   />
                 </PhotoFrame>
                 <CaptionBlock>
-                  <Caption $theme={currentTheme}>{photo.caption}</Caption>
-                  <SubCaption $theme={currentTheme}>{photo.subCaption}</SubCaption>
+                  <Caption $theme={currentTheme} $fontFamily={currentFontCss}>{photo.caption}</Caption>
+                  <SubCaption $theme={currentTheme} $fontFamily={currentFontCss}>{photo.subCaption}</SubCaption>
                 </CaptionBlock>
               </PolaroidCard>
             );
@@ -328,8 +403,18 @@ const Gallery = () => {
                 />
               </PhotoFrame>
               <CaptionBlock>
-                <Caption $theme={FRAME_THEMES[isEditing ? editData.theme : selectedPhoto.theme]}>{isEditing ? editData.caption : selectedPhoto.caption}</Caption>
-                <SubCaption $theme={FRAME_THEMES[isEditing ? editData.theme : selectedPhoto.theme]}>{isEditing ? editData.subCaption : selectedPhoto.subCaption}</SubCaption>
+                <Caption 
+                  $theme={FRAME_THEMES[isEditing ? editData.theme : selectedPhoto.theme]}
+                  $fontFamily={getFontCss(isEditing ? editData.fontFamily : selectedPhoto.fontFamily)}
+                >
+                  {isEditing ? editData.caption : selectedPhoto.caption}
+                </Caption>
+                <SubCaption 
+                  $theme={FRAME_THEMES[isEditing ? editData.theme : selectedPhoto.theme]}
+                  $fontFamily={getFontCss(isEditing ? editData.fontFamily : selectedPhoto.fontFamily)}
+                >
+                  {isEditing ? editData.subCaption : selectedPhoto.subCaption}
+                </SubCaption>
               </CaptionBlock>
             </PolaroidCard>
 
@@ -338,14 +423,24 @@ const Gallery = () => {
               <EditForm>
                 <ThemeSelector>
                   {Object.values(FRAME_THEMES).map(t => (
-                    <Swatch key={t.id} $color={t.bg} $active={editData.theme === t.id} onClick={() => setEditData({...editData, theme: t.id})} />
+                    <Swatch type="button" key={t.id} $color={t.bg} $active={editData.theme === t.id} onClick={() => setEditData({...editData, theme: t.id})} />
                   ))}
                 </ThemeSelector>
+                
+                {/* NEW: Font Selector inside Edit Mode */}
+                <ThemeSelector>
+                  {FONT_OPTIONS.map(f => (
+                    <FontButton type="button" key={f.id} $fontFamily={f.css} $active={editData.fontFamily === f.id} onClick={() => setEditData({...editData, fontFamily: f.id})}>
+                      Ag
+                    </FontButton>
+                  ))}
+                </ThemeSelector>
+
                 <Input value={editData.caption} onChange={e => setEditData({...editData, caption: e.target.value})} placeholder="Main Caption" />
                 <Input value={editData.subCaption} onChange={e => setEditData({...editData, subCaption: e.target.value})} placeholder="Bottom Text (Date)" />
                 <ActionBar style={{ justifyContent: 'space-between', marginTop: '10px' }}>
-                  <ActionButton onClick={() => setIsEditing(false)}><X size={18}/> Cancel</ActionButton>
-                  <ActionButton onClick={handleSaveEdit} disabled={isProcessing} style={{ color: '#c78933' }}>
+                  <ActionButton type="button" onClick={() => setIsEditing(false)}><X size={18}/> Cancel</ActionButton>
+                  <ActionButton type="button" onClick={handleSaveEdit} disabled={isProcessing} style={{ color: '#c78933' }}>
                     {isProcessing ? <Loader2 size={18} className="animate-spin"/> : <Save size={18}/>} Save Changes
                   </ActionButton>
                 </ActionBar>
