@@ -62,16 +62,16 @@ model Verification {
 }
 
 model Polaroid {
-  id            String   @id @default(uuid())
-  userId        String
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  imageUrl      String   
-  caption       String?  
+  id         String   @id @default(uuid())
+  imageUrl   String
+  caption    String?
+  subCaption String?
+  theme      String   @default("classic")
   
-  // --- NEW UI STATE FIELDS ---
-  subCaption    String?            // Stores the bottom date/text
-  theme         String   @default("classic") // Stores 'classic', 'coral', 'slate', or 'sand'
-  filterName String @default("none")     
+  filterName String   @default("none") 
   
-  createdAt     DateTime @default(now())
+  createdAt  DateTime @default(now())
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId     String
 }

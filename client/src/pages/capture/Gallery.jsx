@@ -14,6 +14,18 @@ const FRAME_THEMES = {
   sand: { id: 'sand', bg: "#e5d3b3", text: "#3f2a1d", subText: "#785b46", strip: "#d4c09e" },
 };
 
+// NEW: Image Filters Dictionary to map database strings to CSS!
+const IMAGE_FILTERS = {
+  none: "none",
+  film35mm: "contrast(1.1) brightness(1.1) saturate(1.2) sepia(0.3) hue-rotate(-10deg)",
+  bw: "grayscale(100%) contrast(1.2)",
+  vintage: "sepia(0.6) contrast(1.1) brightness(0.9) hue-rotate(-15deg)",
+  lens360: "contrast(1.3) saturate(1.5) brightness(0.9)", 
+  cyber: "hue-rotate(90deg) saturate(2) contrast(1.2)",
+  dream: "blur(1px) contrast(1.1) brightness(1.1) saturate(1.3)",
+  cool: "sepia(0.2) hue-rotate(180deg) saturate(1.2)",
+};
+
 // ==========================================
 // STYLED COMPONENTS (Base Gallery)
 // ==========================================
@@ -64,15 +76,19 @@ const PolaroidCard = styled(motion.div)`
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
   border-radius: 2px; width: 100%; max-width: 320px;
   position: relative; cursor: pointer; transform-origin: center;
+  border: 1px solid rgba(255, 255, 255, 0.05);
 `;
 
 const PhotoFrame = styled.div`
   width: 100%; aspect-ratio: 1 / 1; background-color: #1a1e23; overflow: hidden;
+  /* Add vignette for 360 lens if needed */
+  box-shadow: ${props => props.$is360 ? "inset 0 0 60px 15px rgba(0,0,0,0.8)" : "inset 0 2px 4px rgba(0,0,0,0.1)"};
 `;
 
 const Photo = styled.img`
   width: 100%; height: 100%; object-fit: cover;
-  filter: ${props => props.$effect ? "contrast(1.1) brightness(1.1) saturate(1.2) sepia(0.3) hue-rotate(-10deg)" : "none"};
+  /* Now accepts the full CSS string from our dictionary */
+  filter: ${props => props.$effectCss}; 
 `;
 
 const CaptionBlock = styled.div`
@@ -97,6 +113,14 @@ const FAB = styled(Link)`
 
 const LoaderContainer = styled.div`
   display: flex; flex-direction: column; align-items: center; padding: 5rem; color: #c78933; gap: 1rem;
+`;
+
+const EmptyState = styled.div`
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 4rem 2rem; text-align: center; color: #6b7280; background: rgba(255, 255, 255, 0.02);
+  border: 1px dashed rgba(255, 255, 255, 0.1); border-radius: 20px; margin-top: 2rem;
+  h3 { color: #ffffff; margin: 1rem 0 0.5rem; font-size: 1.5rem; }
+  p { max-width: 400px; line-height: 1.5; }
 `;
 
 // ==========================================
@@ -134,6 +158,8 @@ const EditForm = styled.div`
 
 const Input = styled.input`
   padding: 10px 16px; border-radius: 8px; border: 1px solid #4b5563; background: #1f2937; color: white;
+  outline: none;
+  &:focus { border-color: #c78933; }
 `;
 
 const ThemeSelector = styled.div`
@@ -222,7 +248,6 @@ const Gallery = () => {
     try {
       setIsProcessing(true);
       const updatedPhoto = await api.updatePolaroid(selectedPhoto.id, editData);
-      // Update local state so UI reflects changes immediately
       setPhotos(photos.map(p => p.id === selectedPhoto.id ? { ...p, ...editData } : p));
       setSelectedPhoto({ ...selectedPhoto, ...editData });
       setIsEditing(false);
@@ -243,6 +268,12 @@ const Gallery = () => {
 
       {isLoading ? (
         <LoaderContainer><Loader2 size={40} className="animate-spin" /><p>Developing photos...</p></LoaderContainer>
+      ) : photos.length === 0 ? (
+        <EmptyState>
+          <ImageIcon size={48} opacity={0.5} />
+          <h3>No memories yet</h3>
+          <p>Your gallery is completely empty. Head over to the capture page to snap your first digital Polaroid!</p>
+        </EmptyState>
       ) : (
         <Grid initial="hidden" animate="show" variants={{ show: { transition: { staggerChildren: 0.1 } } }}>
           {photos.map((photo, index) => {
@@ -257,8 +288,13 @@ const Gallery = () => {
                 style={{ rotate: randomRotation }}
                 whileHover={{ scale: 1.05, rotate: 0, zIndex: 10, boxShadow: "0 30px 60px rgba(0,0,0,0.7)" }}
               >
-                <PhotoFrame>
-                  <Photo src={photo.imageUrl} alt="Polaroid" $effect={photo.hasFilmFilter} loading="lazy" />
+                <PhotoFrame $is360={photo.filterName === "lens360"}>
+                  <Photo 
+                    src={photo.imageUrl} 
+                    alt={photo.caption || "Polaroid"} 
+                    $effectCss={IMAGE_FILTERS[photo.filterName] || "none"} 
+                    loading="lazy" 
+                  />
                 </PhotoFrame>
                 <CaptionBlock>
                   <Caption $theme={currentTheme}>{photo.caption}</Caption>
@@ -284,8 +320,12 @@ const Gallery = () => {
               $theme={FRAME_THEMES[isEditing ? editData.theme : selectedPhoto.theme] || FRAME_THEMES.classic}
               style={{ cursor: 'default', transform: 'scale(1.1)' }}
             >
-              <PhotoFrame>
-                <Photo src={selectedPhoto.imageUrl} $effect={selectedPhoto.hasFilmFilter} crossOrigin="anonymous" />
+              <PhotoFrame $is360={selectedPhoto.filterName === "lens360"}>
+                <Photo 
+                  src={selectedPhoto.imageUrl} 
+                  $effectCss={IMAGE_FILTERS[selectedPhoto.filterName] || "none"} 
+                  crossOrigin="anonymous" 
+                />
               </PhotoFrame>
               <CaptionBlock>
                 <Caption $theme={FRAME_THEMES[isEditing ? editData.theme : selectedPhoto.theme]}>{isEditing ? editData.caption : selectedPhoto.caption}</Caption>
