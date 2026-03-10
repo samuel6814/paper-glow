@@ -13,8 +13,10 @@ export const auth = betterAuth({
     },
     // ADD THIS SECTION FOR PRODUCTION!
     advanced: {
-        cookiePrefix: "paperglow",
-        crossSubDomainCookie: true, // Allows cookies between Vercel and Render
+        defaultCookieAttributes: {
+            sameSite: "none",
+            secure: true
+        }
     },
     trustedOrigins: [process.env.CLIENT_URL]
 });
