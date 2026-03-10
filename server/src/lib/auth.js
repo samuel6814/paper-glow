@@ -8,15 +8,13 @@ export const auth = betterAuth({
     database: prismaAdapter(prisma, {
         provider: "postgresql",
     }),
-    
     emailAndPassword: {
         enabled: true,
     },
-    
+    // ADD THIS SECTION FOR PRODUCTION!
     advanced: {
         cookiePrefix: "paperglow",
+        crossSubDomainCookie: true, // Allows cookies between Vercel and Render
     },
-
-    // ADD THIS LINE! Tell Better Auth to trust your Vite frontend
-    trustedOrigins: ["http://localhost:5173"] 
+    trustedOrigins: [process.env.CLIENT_URL]
 });

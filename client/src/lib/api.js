@@ -1,14 +1,17 @@
 // client/src/lib/api.js
 
-const API_BASE = 'http://localhost:5000/api';
+/**
+ * Dynamically pulls the Backend URL from the environment variable.
+ * Fallback to localhost during development if the .env is missing.
+ */
+const BASE_URL = import.meta.env.VITE_API_BASE || 'http://localhost:5000';
+const API_BASE = `${BASE_URL}/api`;
 
 /**
  * Global response handler for all API calls
- * Ensures consistent error throwing if the backend returns a 4xx or 5xx status
  */
 const handleResponse = async (response) => {
   if (!response.ok) {
-    // Attempt to parse the JSON error message from the backend, fallback to generic error
     const errorData = await response.json().catch(() => ({}));
     throw new Error(errorData.error || `HTTP Error: ${response.status}`);
   }
@@ -17,15 +20,13 @@ const handleResponse = async (response) => {
 
 export const api = {
   /**
-   * Uploads a new Polaroid image and caption to the backend
-   * Note: We don't set 'Content-Type' here because the browser automatically 
-   * sets it to 'multipart/form-data' along with the required boundary when sending FormData.
+   * Uploads a new Polaroid image and data
    */
   uploadPolaroid: async (formData) => {
     const response = await fetch(`${API_BASE}/polaroids`, {
       method: 'POST',
       body: formData,
-      credentials: 'include', // Strictly required to send Better Auth session cookies
+      credentials: 'include', // Sends Better Auth session cookies
     });
     return handleResponse(response);
   },
@@ -36,9 +37,32 @@ export const api = {
   getPolaroids: async () => {
     const response = await fetch(`${API_BASE}/polaroids`, {
       method: 'GET',
+      credentials: 'include',
+    });
+    return handleResponse(response);
+  },
+
+  /**
+   * Updates an existing Polaroid (Caption, Theme, etc.)
+   */
+  updatePolaroid: async (id, data) => {
+    const response = await fetch(`${API_BASE}/polaroids/${id}`, {
+      method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
       },
+      body: JSON.stringify(data),
+      credentials: 'include',
+    });
+    return handleResponse(response);
+  },
+
+  /**
+   * Deletes a Polaroid
+   */
+  deletePolaroid: async (id) => {
+    const response = await fetch(`${API_BASE}/polaroids/${id}`, {
+      method: 'DELETE',
       credentials: 'include',
     });
     return handleResponse(response);
@@ -50,23 +74,6 @@ export const api = {
   getPolaroidById: async (id) => {
     const response = await fetch(`${API_BASE}/polaroids/${id}`, {
       method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      credentials: 'include',
-    });
-    return handleResponse(response);
-  },
-
-  /**
-   * Deletes a Polaroid from both the database and Cloudinary
-   */
-  deletePolaroid: async (id) => {
-    const response = await fetch(`${API_BASE}/polaroids/${id}`, {
-      method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json',
-      },
       credentials: 'include',
     });
     return handleResponse(response);

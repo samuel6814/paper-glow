@@ -1,17 +1,17 @@
 {
   "name": "server",
   "version": "1.0.0",
-  "description": "",
+  "type": "module",
   "main": "src/index.js",
   "scripts": {
     "dev": "node --watch src/index.js",
     "start": "node src/index.js",
+    "build": "npx prisma generate", 
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "module",
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "dependencies": {
     "@prisma/client": "^6.19.2",
     "better-auth": "^1.4.18",
