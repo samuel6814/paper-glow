@@ -20,12 +20,11 @@ import {
   Palette,
   Loader2,
   Wand2,
-  Type, // NEW: Imported for the font selector
+  Type,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "../../lib/api";
 
-// --- Frame Theme Presets ---
 const FRAME_THEMES = [
   {
     id: "classic",
@@ -57,15 +56,14 @@ const FRAME_THEMES = [
   },
 ];
 
-// --- NEW: Font Presets ---
+// UPDATED: Standard Fonts + Handwriting
 const FONT_OPTIONS = [
   { id: "caveat", css: "'Caveat', cursive" },
-  { id: "kalam", css: "'Kalam', cursive" },
-  { id: "marker", css: "'Permanent Marker', cursive" },
-  { id: "indie", css: "'Indie Flower', cursive" },
+  { id: "times", css: "'Times New Roman', Times, serif" },
+  { id: "arial", css: "Arial, Helvetica, sans-serif" },
+  { id: "inter", css: "'Inter', sans-serif" },
 ];
 
-// --- Image Filters ---
 const IMAGE_FILTERS = [
   { id: "none", name: "Normal", css: "none" },
   {
@@ -101,7 +99,6 @@ const IMAGE_FILTERS = [
   },
 ];
 
-// --- Helper Functions ---
 const getFormattedDate = () => {
   const date = new Date();
   return date.toLocaleDateString("en-US", {
@@ -143,9 +140,8 @@ async function getCroppedImg(imageSrc, pixelCrop) {
   });
 }
 
-// NEW: Helper to permanently burn the CSS filter into the image pixels for downloading
 const bakeFilterIntoImage = async (imageSrc, filterCss) => {
-  if (filterCss === "none") return imageSrc;
+  if (!filterCss || filterCss === "none") return imageSrc;
   const img = await createImage(imageSrc);
   const canvas = document.createElement("canvas");
   canvas.width = img.width;
@@ -314,7 +310,6 @@ const ColorSwatch = styled(motion.button)`
     props.$isActive ? "0 0 10px rgba(199, 137, 51, 0.5)" : "none"};
 `;
 
-// NEW: Font selection button
 const FontButton = styled(motion.button)`
   width: 32px;
   height: 32px;
@@ -446,7 +441,7 @@ const CaptionInput = styled.input`
   left: 0;
   width: 100%;
   text-align: center;
-  font-family: ${(props) => props.$fontFamily}; /* Dynamically updated font */
+  font-family: ${(props) => props.$fontFamily};
   font-size: 1.8rem;
   color: ${(props) => props.$color};
   background: transparent;
@@ -479,7 +474,7 @@ const BottomStrip = styled.div`
 const SubCaptionInput = styled.input`
   width: 100%;
   text-align: center;
-  font-family: ${(props) => props.$fontFamily}; /* Dynamically updated font */
+  font-family: ${(props) => props.$fontFamily};
   font-size: 1.2rem;
   font-weight: 500;
   color: ${(props) => props.$color};
@@ -789,7 +784,7 @@ const Capture = () => {
   const [facingMode, setFacingMode] = useState("user");
 
   const [theme, setTheme] = useState(FRAME_THEMES[0]);
-  const [activeFont, setActiveFont] = useState(FONT_OPTIONS[0]); // NEW: Font State
+  const [activeFont, setActiveFont] = useState(FONT_OPTIONS[0]);
   const [activeFilter, setActiveFilter] = useState(IMAGE_FILTERS[0]);
   const [showFilters, setShowFilters] = useState(false);
 
@@ -811,9 +806,7 @@ const Capture = () => {
       streamRef.current.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
     }
-    if (videoRef.current) {
-      videoRef.current.srcObject = null;
-    }
+    if (videoRef.current) videoRef.current.srcObject = null;
   }, []);
 
   useEffect(() => {
@@ -857,26 +850,20 @@ const Capture = () => {
   const handleCapture = () => {
     if (!videoRef.current || viewState !== "camera") return;
     setIsFlashing(true);
-
     const video = videoRef.current;
     const canvas = document.createElement("canvas");
     const size = Math.min(video.videoWidth, video.videoHeight);
-
     canvas.width = size;
     canvas.height = size;
     const ctx = canvas.getContext("2d");
-
     const startX = (video.videoWidth - size) / 2;
     const startY = (video.videoHeight - size) / 2;
-
     if (facingMode === "user") {
       ctx.translate(size, 0);
       ctx.scale(-1, 1);
     }
-
     ctx.drawImage(video, startX, startY, size, size, 0, 0, size, size);
     const imageDataUrl = canvas.toDataURL("image/jpeg", 0.9);
-
     setTimeout(() => {
       setIsFlashing(false);
       setFinalImage(imageDataUrl);
@@ -927,39 +914,28 @@ const Capture = () => {
   const handleSaveToDevice = async () => {
     if (!polaroidRef.current || !finalImage) return;
     setIsSaving(true);
-
     try {
       document.activeElement?.blur();
 
-      // 1. Bake the filter into the image so html2canvas captures it
+      // Bake filter and use onclone to apply it ONLY to the screenshot, keeping UI smooth
       const bakedImageSrc = await bakeFilterIntoImage(
         finalImage,
         activeFilter.css
       );
 
-      // 2. Temporarily swap the UI image with the "baked" image
-      const imgElement = polaroidRef.current.querySelector("img");
-      const originalFilter = imgElement.style.filter;
-      const originalSrc = imgElement.src;
-
-      imgElement.src = bakedImageSrc;
-      imgElement.style.filter = "none"; // Remove CSS filter so it doesn't double-apply
-
-      // Wait a tiny moment for the DOM to update
-      await new Promise((resolve) => setTimeout(resolve, 100));
-
-      // 3. Take the screenshot
       const canvas = await html2canvas(polaroidRef.current, {
         useCORS: true,
         scale: 2,
         backgroundColor: null,
+        onclone: (clonedDoc) => {
+          const imgElement = clonedDoc.querySelector("img");
+          if (imgElement) {
+            imgElement.src = bakedImageSrc;
+            imgElement.style.filter = "none";
+          }
+        },
       });
 
-      // 4. Restore the UI image back to normal
-      imgElement.src = originalSrc;
-      imgElement.style.filter = originalFilter;
-
-      // 5. Download the screenshot
       const dataUrl = canvas.toDataURL("image/jpeg", 0.95);
       const link = document.createElement("a");
       link.download = `PaperGlow-${Date.now()}.jpg`;
@@ -978,7 +954,6 @@ const Capture = () => {
   const handleSaveToGallery = async () => {
     if (!finalImage) return;
     setIsSaving(true);
-
     try {
       const response = await fetch(finalImage);
       const blob = await response.blob();
@@ -987,9 +962,8 @@ const Capture = () => {
       formData.append("caption", caption);
       formData.append("subCaption", subCaption);
       formData.append("theme", theme.id);
-      formData.append("fontFamily", activeFont.id); // NEW: Send the font choice to the backend!
+      formData.append("fontFamily", activeFont.id);
       formData.append("filterName", activeFilter.id);
-
       await api.uploadPolaroid(formData);
       navigate("/gallery");
     } catch (error) {
@@ -1149,14 +1123,12 @@ const Capture = () => {
                   />
                 </>
               )}
-
               {viewState === "idle" && (
                 <IdleState>
                   <CameraOff size={48} opacity={0.5} color="#9ca3af" />
                   <p>Camera is off</p>
                 </IdleState>
               )}
-
               {viewState === "crop" && (
                 <Cropper
                   image={uploadedImage}
@@ -1169,7 +1141,6 @@ const Capture = () => {
                   style={{ containerStyle: { background: "#1a1e23" } }}
                 />
               )}
-
               {viewState === "review" && (
                 <>
                   <CapturedImage
@@ -1254,7 +1225,6 @@ const Capture = () => {
               </SecondaryButton>
               <ActionLabel>UPLOAD</ActionLabel>
             </ActionGroup>
-
             <ActionGroup>
               <ShutterOuter
                 onClick={handleCapture}
@@ -1267,7 +1237,6 @@ const Capture = () => {
                 </ShutterInner>
               </ShutterOuter>
             </ActionGroup>
-
             <ActionGroup>
               <SecondaryButton
                 whileHover={{ scale: 1.05 }}
@@ -1279,7 +1248,6 @@ const Capture = () => {
             </ActionGroup>
           </>
         )}
-
         {viewState === "crop" && (
           <ReviewControls>
             <CancelActionButton onClick={handleRetake}>
@@ -1290,7 +1258,6 @@ const Capture = () => {
             </PrimaryActionButton>
           </ReviewControls>
         )}
-
         {viewState === "review" && (
           <ReviewControls>
             <CancelActionButton onClick={handleRetake} disabled={isSaving}>
