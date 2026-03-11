@@ -56,7 +56,6 @@ const FRAME_THEMES = [
   },
 ];
 
-// UPDATED: Standard Fonts + Handwriting
 const FONT_OPTIONS = [
   { id: "caveat", css: "'Caveat', cursive" },
   { id: "times", css: "'Times New Roman', Times, serif" },
@@ -219,7 +218,6 @@ const Title = styled.h1`
     max-width: 60%;
   }
 `;
-
 const Subtitle = styled.p`
   font-family: "Playfair Display", serif;
   font-style: italic;
@@ -402,25 +400,6 @@ const CapturedImage = styled.img`
   object-fit: cover;
   filter: ${(props) => props.$effectCss};
   transition: filter 0.3s ease;
-`;
-
-const FilterBadge = styled(motion.div)`
-  position: absolute;
-  bottom: 12px;
-  right: 12px;
-  background-color: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(4px);
-  color: #fef3c7;
-  padding: 4px 10px;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.65rem;
-  font-weight: 700;
-  letter-spacing: 1px;
-  z-index: 20;
-  border: 1px solid rgba(254, 243, 199, 0.2);
 `;
 
 const CaptionInput = styled.input`
@@ -918,14 +897,14 @@ const Capture = () => {
       }
       ctx.drawImage(img, 0, 0);
 
-      // 2. Convert to base64 string (This is what iPhones prefer)
+      // 2. Convert to base64 string
       const bakedUrl = filterCanvas.toDataURL("image/jpeg", 0.95);
 
       // 3. PRELOAD the image so Safari has it in memory instantly
       await new Promise((resolve) => {
         const preloader = new Image();
         preloader.onload = resolve;
-        preloader.onerror = resolve; // Continue even if it errors
+        preloader.onerror = resolve;
         preloader.src = bakedUrl;
       });
 
@@ -935,11 +914,7 @@ const Capture = () => {
         scale: 2,
         backgroundColor: null,
         onclone: (clonedDoc) => {
-          // Double-check the watermark badge is hidden
-          const badge = clonedDoc.querySelector("[data-html2canvas-ignore]");
-          if (badge) badge.style.display = "none";
-
-          // Swap the image safely for iOS WebKit
+          // Swap the image safely
           const clonedImg = clonedDoc.querySelector("img");
           if (clonedImg) {
             clonedImg.src = bakedUrl;
@@ -1072,7 +1047,6 @@ const Capture = () => {
                   />
                 ))}
               </div>
-
               <div
                 style={{
                   width: "100%",
@@ -1081,7 +1055,6 @@ const Capture = () => {
                   margin: "8px 0",
                 }}
               />
-
               <Type
                 size={18}
                 color="#9ca3af"
@@ -1155,25 +1128,12 @@ const Capture = () => {
                 />
               )}
               {viewState === "review" && (
-                <>
-                  <CapturedImage
-                    src={finalImage}
-                    alt="Captured Polaroid"
-                    $effectCss={activeFilter.css}
-                  />
-                  <AnimatePresence>
-                    {activeFilter.id !== "none" && (
-                      <FilterBadge
-                        data-html2canvas-ignore="true" // Ensure this gets hidden in screenshots!
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0 }}
-                      >
-                        <Wand2 size={12} color="#c78933" /> {activeFilter.name}
-                      </FilterBadge>
-                    )}
-                  </AnimatePresence>
-                </>
+                <CapturedImage
+                  src={finalImage}
+                  alt="Captured Polaroid"
+                  $effectCss={activeFilter.css}
+                />
+                // FilterBadge has been completely removed from here!
               )}
             </ViewfinderFrame>
 

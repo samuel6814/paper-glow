@@ -49,7 +49,6 @@ const FRAME_THEMES = {
   },
 };
 
-// UPDATED: Standard Fonts + Handwriting
 const FONT_OPTIONS = [
   { id: "caveat", css: "'Caveat', cursive" },
   { id: "times", css: "'Times New Roman', Times, serif" },
@@ -102,7 +101,6 @@ const GalleryContainer = styled.div`
 const TopNav = styled.div`
   margin-bottom: 2rem;
 `;
-
 const BackButton = styled(Link)`
   color: #9ca3af;
   background: rgba(255, 255, 255, 0.05);
@@ -280,7 +278,6 @@ const ActionBar = styled.div`
   padding: 12px 24px;
   border-radius: 30px;
 `;
-
 const ActionButton = styled.button`
   background: none;
   border: none;
@@ -302,7 +299,6 @@ const ActionButton = styled.button`
     cursor: not-allowed;
   }
 `;
-
 const CloseButton = styled.button`
   position: absolute;
   top: 2rem;
@@ -357,7 +353,7 @@ const FontButton = styled.button`
   width: 30px;
   height: 30px;
   border-radius: 50%;
-  background-color: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.1);
   color: #fff;
   font-size: 1.1rem;
   display: flex;
@@ -419,26 +415,25 @@ const Gallery = () => {
     setIsEditing(false);
   };
 
-  // --- ACTIONS ---
   const handleDownload = async () => {
     if (!polaroidRef.current || !selectedPhoto) return;
+    setIsProcessing(true);
+
     try {
-      setIsProcessing(true);
-      
       const filterCss = IMAGE_FILTERS[selectedPhoto.filterName] || "none";
-      
+
       // 1. Draw the filtered image onto a background Canvas
       const img = await createImage(selectedPhoto.imageUrl);
       const filterCanvas = document.createElement("canvas");
       filterCanvas.width = img.width;
       filterCanvas.height = img.height;
       const ctx = filterCanvas.getContext("2d");
-      
+
       if (filterCss !== "none") {
-          ctx.filter = filterCss;
+        ctx.filter = filterCss;
       }
       ctx.drawImage(img, 0, 0);
-      
+
       // 2. Convert to base64 string
       const bakedUrl = filterCanvas.toDataURL("image/jpeg", 0.95);
 
@@ -446,24 +441,24 @@ const Gallery = () => {
       await new Promise((resolve) => {
         const preloader = new Image();
         preloader.onload = resolve;
-        preloader.onerror = resolve; // Continue even if it errors
+        preloader.onerror = resolve;
         preloader.src = bakedUrl;
       });
 
       // 4. Take the screenshot & swap the URL safely
-      const screenshotCanvas = await html2canvas(polaroidRef.current, { 
-        useCORS: true, 
-        scale: 2, 
+      const screenshotCanvas = await html2canvas(polaroidRef.current, {
+        useCORS: true,
+        scale: 2,
         backgroundColor: null,
         onclone: (clonedDoc) => {
-          const clonedImg = clonedDoc.querySelector('img');
+          const clonedImg = clonedDoc.querySelector("img");
           if (clonedImg) {
-             clonedImg.src = bakedUrl;
-             clonedImg.style.filter = "none";
+            clonedImg.src = bakedUrl;
+            clonedImg.style.filter = "none";
           }
-        }
+        },
       });
-      
+
       // 5. Download the result!
       const dataUrl = screenshotCanvas.toDataURL("image/jpeg", 0.95);
       const link = document.createElement("a");
