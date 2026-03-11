@@ -83,18 +83,6 @@ const createImage = (url) =>
     image.src = url;
   });
 
-const bakeFilterIntoImage = async (imageSrc, filterCss) => {
-  if (!filterCss || filterCss === "none") return imageSrc;
-  const img = await createImage(imageSrc);
-  const canvas = document.createElement("canvas");
-  canvas.width = img.width;
-  canvas.height = img.height;
-  const ctx = canvas.getContext("2d");
-  ctx.filter = filterCss;
-  ctx.drawImage(img, 0, 0);
-  return canvas.toDataURL("image/jpeg", 0.95);
-};
-
 // ==========================================
 // STYLED COMPONENTS (Base Gallery)
 // ==========================================
@@ -451,33 +439,32 @@ const Gallery = () => {
       }
       ctx.drawImage(img, 0, 0);
       
-      // 2. Take the screenshot & inject the Canvas instantly
+      // 2. Convert to base64 string
+      const bakedUrl = filterCanvas.toDataURL("image/jpeg", 0.95);
+
+      // 3. PRELOAD the image so Safari has it in memory instantly
+      await new Promise((resolve) => {
+        const preloader = new Image();
+        preloader.onload = resolve;
+        preloader.onerror = resolve; // Continue even if it errors
+        preloader.src = bakedUrl;
+      });
+
+      // 4. Take the screenshot & swap the URL safely
       const screenshotCanvas = await html2canvas(polaroidRef.current, { 
         useCORS: true, 
         scale: 2, 
         backgroundColor: null,
         onclone: (clonedDoc) => {
           const clonedImg = clonedDoc.querySelector('img');
-          if (clonedImg && clonedImg.parentNode) {
-             // Create a safe canvas inside the cloned document
-             const clonedCanvas = clonedDoc.createElement('canvas');
-             clonedCanvas.width = filterCanvas.width;
-             clonedCanvas.height = filterCanvas.height;
-             const clonedCtx = clonedCanvas.getContext('2d');
-             clonedCtx.drawImage(filterCanvas, 0, 0);
-
-             // Match the Polaroid image styling perfectly
-             clonedCanvas.style.width = '100%';
-             clonedCanvas.style.height = '100%';
-             clonedCanvas.style.objectFit = 'cover';
-
-             // Replace the empty <img> tag with our fully drawn <canvas>
-             clonedImg.parentNode.replaceChild(clonedCanvas, clonedImg);
+          if (clonedImg) {
+             clonedImg.src = bakedUrl;
+             clonedImg.style.filter = "none";
           }
         }
       });
       
-      // 3. Download the result!
+      // 5. Download the result!
       const dataUrl = screenshotCanvas.toDataURL("image/jpeg", 0.95);
       const link = document.createElement("a");
       link.download = `PaperGlow-${Date.now()}.jpg`;

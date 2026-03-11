@@ -140,18 +140,6 @@ async function getCroppedImg(imageSrc, pixelCrop) {
   });
 }
 
-const bakeFilterIntoImage = async (imageSrc, filterCss) => {
-  if (!filterCss || filterCss === "none") return imageSrc;
-  const img = await createImage(imageSrc);
-  const canvas = document.createElement("canvas");
-  canvas.width = img.width;
-  canvas.height = img.height;
-  const ctx = canvas.getContext("2d");
-  ctx.filter = filterCss;
-  ctx.drawImage(img, 0, 0);
-  return canvas.toDataURL("image/jpeg", 0.95);
-};
-
 // ==========================================
 // STYLED COMPONENTS
 // ==========================================
@@ -914,49 +902,53 @@ const Capture = () => {
   const handleSaveToDevice = async () => {
     if (!polaroidRef.current || !finalImage) return;
     setIsSaving(true);
-    
+
     try {
       document.activeElement?.blur();
-      
+
       // 1. Draw the filtered image onto a background Canvas
       const img = await createImage(finalImage);
       const filterCanvas = document.createElement("canvas");
       filterCanvas.width = img.width;
       filterCanvas.height = img.height;
       const ctx = filterCanvas.getContext("2d");
-      
+
       if (activeFilter.css !== "none") {
-          ctx.filter = activeFilter.css;
+        ctx.filter = activeFilter.css;
       }
       ctx.drawImage(img, 0, 0);
 
-      // 2. Take the screenshot & inject the Canvas instantly
-      const screenshotCanvas = await html2canvas(polaroidRef.current, { 
-        useCORS: true, 
-        scale: 2, 
+      // 2. Convert to base64 string (This is what iPhones prefer)
+      const bakedUrl = filterCanvas.toDataURL("image/jpeg", 0.95);
+
+      // 3. PRELOAD the image so Safari has it in memory instantly
+      await new Promise((resolve) => {
+        const preloader = new Image();
+        preloader.onload = resolve;
+        preloader.onerror = resolve; // Continue even if it errors
+        preloader.src = bakedUrl;
+      });
+
+      // 4. Take the screenshot & swap the URL
+      const screenshotCanvas = await html2canvas(polaroidRef.current, {
+        useCORS: true,
+        scale: 2,
         backgroundColor: null,
         onclone: (clonedDoc) => {
-          const clonedImg = clonedDoc.querySelector('img');
-          if (clonedImg && clonedImg.parentNode) {
-             // Create a safe canvas inside the cloned document
-             const clonedCanvas = clonedDoc.createElement('canvas');
-             clonedCanvas.width = filterCanvas.width;
-             clonedCanvas.height = filterCanvas.height;
-             const clonedCtx = clonedCanvas.getContext('2d');
-             clonedCtx.drawImage(filterCanvas, 0, 0);
+          // Double-check the watermark badge is hidden
+          const badge = clonedDoc.querySelector("[data-html2canvas-ignore]");
+          if (badge) badge.style.display = "none";
 
-             // Match the Polaroid image styling perfectly
-             clonedCanvas.style.width = '100%';
-             clonedCanvas.style.height = '100%';
-             clonedCanvas.style.objectFit = 'cover';
-
-             // Replace the empty <img> tag with our fully drawn <canvas>
-             clonedImg.parentNode.replaceChild(clonedCanvas, clonedImg);
+          // Swap the image safely for iOS WebKit
+          const clonedImg = clonedDoc.querySelector("img");
+          if (clonedImg) {
+            clonedImg.src = bakedUrl;
+            clonedImg.style.filter = "none";
           }
-        }
+        },
       });
-      
-      // 3. Download the result!
+
+      // 5. Download the result!
       const dataUrl = screenshotCanvas.toDataURL("image/jpeg", 0.95);
       const link = document.createElement("a");
       link.download = `PaperGlow-${Date.now()}.jpg`;
@@ -971,8 +963,6 @@ const Capture = () => {
       setIsSaving(false);
     }
   };
-
-  
 
   const handleSaveToGallery = async () => {
     if (!finalImage) return;
@@ -1174,6 +1164,7 @@ const Capture = () => {
                   <AnimatePresence>
                     {activeFilter.id !== "none" && (
                       <FilterBadge
+                        data-html2canvas-ignore="true" // Ensure this gets hidden in screenshots!
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0 }}
